@@ -62,6 +62,11 @@ export function install(rt) {
     const fromName = from?.name ?? 'You'
     const room = rt.roomOf(roomId)
     const asker = work === undefined ? undefined : rt.botOf(state.works?.[work]?.from)?.name
+    // One Bot talking to another, with no group and no attachments, is thread
+    // work: an Onlyne relay, when the profile mounts one, carries the very same
+    // header and source to the receiving node, which rebuilds this message
+    // there. The local path stays the fallback for a session whose node is not
+    // up yet and for group turns, which name a room Session instead of a Bot.
     // Session events reject `undefined` members, so optional fields are omitted instead.
     const source = {
       kind: SOURCE_KIND,
@@ -80,6 +85,31 @@ export function install(rt) {
       ...(askedBy ? { askedBy } : {}),
       ...(fromRoomId ? { senderRoomId: fromRoomId } : {}),
     }
+    const relay = fromId !== undefined && toId !== undefined && roomId === undefined && sessionId === undefined && files.length === 0
+      ? ctx.get?.('botRelay')
+      : undefined
+    if (relay !== undefined) {
+      try {
+        await relay.relay({
+          fromSessionId: rt.chatOf(fromId),
+          toSessionId: rt.chatOf(toId),
+          deliveryKind: role,
+          header: headerFor(role, fromName, room?.name, audience, note, deferred, { resumed, retried, resent, asker }),
+          source,
+          text,
+          steer: steer === true,
+        })
+        if (!deferred && !resumed && !retried) {
+          recordExchange({ fromId, toId, text, role, exchangeId, replyTo, audience, length, files, merged, targetSessionId: rt.chatOf(toId) })
+        }
+        return exchangeId
+      } catch (error) {
+        // A node that is not up yet is the ordinary first-contact case: the
+        // local path below brings the session in, and the next message finds
+        // its node.
+        rt.warn('ds-bot: onlyne relay unavailable, delivering locally: %s', error instanceof Error ? error.message : String(error))
+      }
+    }
     const targetSessionId = sessionId ?? rt.chatOf(toId)
     await rt.ensureCapabilities(targetSessionId)
     const agent = await resolveAgent(targetSessionId)
@@ -96,6 +126,16 @@ export function install(rt) {
     else agent.followup(message)
     await ctx.sessions.flush(agent.session)
     if (EXCHANGE_ROLES.has(role) && !deferred && !resumed && !retried) {
+      recordExchange({ fromId, toId, text, role, exchangeId, replyTo, audience, length, files, merged, targetSessionId })
+    }
+    return exchangeId
+  }
+
+  // Recording is the same for both transports: the exchange list is the team's
+  // memory of who asked whom, and it reads back regardless of how the message
+  // travelled.
+  function recordExchange({ fromId, toId, text, role, exchangeId, replyTo, audience, length, files, merged, targetSessionId }) {
+    if (EXCHANGE_ROLES.has(role)) {
       // Recorded once the message is in the Session: an earlier record would show
       // a failed delivery as delivered. The whole text is in its file, or in the
       // Session it goes to; exchangeText reads it back there. Resends keep any
@@ -108,7 +148,6 @@ export function install(rt) {
       else if (merged) state.exchanges[earlier] = entry
       void rt.save().catch(() => {})
     }
-    return exchangeId
   }
 
   // A message between Bots, whole, from the Session it was delivered to: the message
