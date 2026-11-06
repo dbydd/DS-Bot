@@ -11,7 +11,10 @@
 
 export const GITHUB = 'github'
 export const GITHUB_SECRET = 'GITHUB_TOKEN'
-const MCP_CLIENT = '@deepseek-ai/dsh-mcp-client'
+// The connector mounts the MCP bridge that publishes the server as internal
+// paths. Its configuration shape matches upstream mcp-client, so this is the
+// whole adaptation: no mcp__github__ tool reaches the model surface.
+const MCP_CLIENT = 'omd-mcp-paths'
 const DEFAULTS = {
   url: 'https://api.githubcopilot.com/mcp/',
   api: 'https://api.github.com',
