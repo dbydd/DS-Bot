@@ -6100,7 +6100,7 @@ var COMPUTER_CSS = `
 .bt-cstep-shot-open img{max-height:280px;max-width:480px}
 `;
 
-// node_modules/deep-view/src/react/ui.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/react/ui.js
 var import_react12 = require("react");
 var FallbackMarkdown = ({ text }) => (0, import_react12.createElement)("span", null, String(text ?? ""));
 var ViewUi = (0, import_react12.createContext)({ t: (key) => key, Markdown: FallbackMarkdown });
@@ -6167,7 +6167,7 @@ function useOptionKeys2(count, onPick, ownRef) {
   return count > 0 && listening <= 1;
 }
 
-// node_modules/deep-view/src/core/formula.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/core/formula.js
 var FUNCTIONS = {
   min: { args: [1, Infinity], run: (...values) => Math.min(...values.map(num)) },
   max: { args: [1, Infinity], run: (...values) => Math.max(...values.map(num)) },
@@ -6448,7 +6448,7 @@ function evaluate(tree, lookup) {
   }
 }
 
-// node_modules/deep-view/src/core/views.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/core/views.js
 var LAYOUT = ["stack", "row"];
 var DISPLAY = ["text", "metric", "table", "chart", "progress", "callout", "sources", "html"];
 var INPUT_TYPES = ["slider", "choice", "toggle", "number"];
@@ -7080,7 +7080,7 @@ function validateForm(node, values) {
   return { fields };
 }
 
-// node_modules/deep-view/src/react/chart.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/react/chart.js
 var import_react13 = require("react");
 var PALETTE = ["var(--dv-accent)", "var(--dv-ink-tangerine)", "var(--dv-ink-green)", "var(--dv-ink-violet)", "var(--dv-ink-sky)", "var(--dv-ink-rose)", "var(--dv-ink-yellow)", "var(--dv-ink-cyan)", "var(--dv-ink-magenta)"];
 var colorAt = (index) => PALETTE[index % PALETTE.length];
@@ -7519,7 +7519,7 @@ var CHART_CSS = `
 @media (prefers-reduced-motion:reduce){.dv-chart-mark,.dv-chart-dot{transition:none}.dv-chart-tip{animation:none}}
 `;
 
-// node_modules/deep-view/src/react/frame.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/react/frame.js
 var import_react14 = require("react");
 var THEME_VARS = [
   ["--view-ink", "--bt-ink", "--dv-ink"],
@@ -7601,7 +7601,7 @@ var HTML_CSS = `
 .dv-view-frame-stopped{margin:0;font-size:13px;line-height:18px;color:var(--dv-ink-2)}
 `;
 
-// node_modules/deep-view/src/react/card.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/react/card.js
 var import_react15 = require("react");
 var mdLabels = (ui2) => ({ code: { copyLabel: ui2.t("Copy"), copiedLabel: ui2.t("Copied") }, footnotes: ui2.t("Footnotes") });
 var TONES2 = ["good", "warn", "bad"];
@@ -8343,7 +8343,7 @@ ${CHART_CSS}
 ${HTML_CSS}
 `;
 
-// node_modules/deep-view/src/react/styles.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/react/styles.js
 var THEME_CSS = `
 body{
 --dv-ink:var(--dsw-alias-label-primary);
@@ -8441,10 +8441,10 @@ button.dv-q-opt:active{background:var(--dv-active)}
 @media (prefers-reduced-motion:reduce){.dv-q,.dv-view-bare,.dv-q-submit,.dv-menu,.dv-q-check{animation:none}}
 `;
 
-// node_modules/deep-view/src/react/index.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/react/index.js
 var DEEP_VIEW_CSS = THEME_CSS + QUESTION_CSS + WIDGET_CSS;
 
-// node_modules/deep-view/src/core/reply.js
+// node_modules/.pnpm/deep-view@0.1.2/node_modules/deep-view/src/core/reply.js
 var REPLY_KIND = "user-question-reply";
 var REPLY_SOURCE_KIND = "deep-view-reply";
 function viewCardText(args) {
@@ -19939,7 +19939,7 @@ var CONNECTORS_PAGE_CSS = `
 @media (prefers-reduced-motion:reduce){.bt-app[data-fresh]::after,.bt-app[data-fresh] .bt-app-icon,.bt-app[data-fresh] .bt-app-btn-done{animation:none}}
 `;
 
-// node_modules/qrcode-generator/dist/qrcode.mjs
+// node_modules/.pnpm/qrcode-generator@2.0.4/node_modules/qrcode-generator/dist/qrcode.mjs
 var qrcode = function(typeNumber, errorCorrectionLevel) {
   const PAD0 = 236;
   const PAD1 = 17;
@@ -23777,6 +23777,20 @@ body[data-ds-dark-theme] .bt-member-state.bt-mw-ask{color:#f0b84a}
 @media (prefers-reduced-motion:reduce){.bt-mw-pill,.bt-mw-face,.bt-mw-label,.bt-member,.bt-mw-card{animation:none}.bt-mw-pill{transition:background-color .12s ease}}
 `;
 
+// src/client/details-tabs.js
+var detailsTabs = createSource([]);
+function registerDetailsTab(entry) {
+  const { id, label, component, order = 0 } = entry;
+  if (typeof id !== "string" || !id || id === "details" || id === "browser") throw new Error("A details tab needs a unique plugin id");
+  if (typeof label !== "string" && typeof label !== "function") throw new Error("A details tab needs a label");
+  if (typeof component !== "function") throw new Error("A details tab needs a React component");
+  if (!Number.isFinite(order)) throw new Error("A details tab order must be finite");
+  if (detailsTabs.getSnapshot().some((tab2) => tab2.id === id)) throw new Error(`Details tab "${id}" is already registered`);
+  const tab = { id, label, component, order };
+  detailsTabs.set((tabs) => [...tabs, tab].sort((left, right) => left.order - right.order));
+  return () => detailsTabs.set((tabs) => tabs.includes(tab) ? tabs.filter((value) => value !== tab) : tabs);
+}
+
 // src/client/details-drawer.js
 var import_react57 = require("react");
 function transcriptOf(list, id, name, hiddenTurns = []) {
@@ -24064,8 +24078,11 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
   const owner = roster.byId[sessionId];
   const part = owner ? currentPart(owner) : sessionId;
   const isMainBot = isMainOf(roster, owner?.id);
-  const [tab, setTab] = (0, import_react57.useState)("details");
+  const pluginTabs = (0, import_react57.useSyncExternalStore)(detailsTabs.subscribe, detailsTabs.getSnapshot, detailsTabs.getSnapshot);
+  const [selectedTab, setTab] = (0, import_react57.useState)("details");
   const room2 = roster.roomsById[sessionId];
+  const tab = selectedTab === "details" || selectedTab === "browser" && owner || pluginTabs.some((entry) => entry.id === selectedTab) ? selectedTab : "details";
+  const pluginTab = pluginTabs.find((entry) => entry.id === tab);
   const [view, setView] = (0, import_react57.useState)(startTab === "settings" && (owner || room2) ? "settings" : "overview");
   const [editing, setEditing] = (0, import_react57.useState)(Boolean(startRenaming && (roster.byId[sessionId] || roster.roomsById[sessionId])));
   const [draftName, setDraftName] = (0, import_react57.useState)(roster.byId[sessionId]?.name ?? (roster.roomsById[sessionId]?.named ? roster.roomsById[sessionId].name : ""));
@@ -24145,7 +24162,7 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
     if (room2) await run2(actions.updateRoom(room2.id, { name: next }));
   };
   const subtitle = bot ? bot.role : roomSubtitle(room2, roster);
-  const tabs = bot ? roster.computer?.enabled === true ? ["details", "browser", "computer"] : ["details", "browser"] : ["details"];
+  const tabs = [...bot ? roster.computer?.enabled === true ? ["details", "browser", "computer"] : ["details", "browser"] : ["details"], ...pluginTabs.map((entry) => entry.id)];
   return [
     (0, import_react57.createElement)(import_react57.Fragment, { key: "top" }, top),
     (0, import_react57.createElement)(
@@ -24177,7 +24194,11 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
       "div",
       { key: "tabs", ref: glide.box, className: "bt-tabs", role: "tablist", "data-move": side },
       (0, import_react57.createElement)("span", { ref: glide.thumb, className: "bt-thumb", "aria-hidden": true }),
-      tabs.map((key) => (0, import_react57.createElement)("button", { key, type: "button", role: "tab", className: "bt-tab", "aria-selected": tab === key, onClick: () => setTab(key) }, t(TAB_LABELS[key])))
+      tabs.map((key) => {
+        const entry = pluginTabs.find((value) => value.id === key);
+        const label = entry ? typeof entry.label === "function" ? (0, import_react57.createElement)(entry.label) : entry.label : t(TAB_LABELS[key]);
+        return (0, import_react57.createElement)("button", { key, type: "button", role: "tab", className: "bt-tab", "aria-selected": tab === key, onClick: () => setTab(key) }, label);
+      })
     ) : null,
     (0, import_react57.createElement)(
       "div",
@@ -24213,7 +24234,8 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
         ) : null,
         (0, import_react57.createElement)(ScheduleSummary, { key: "routines", bot, actions })
       ] : null,
-      bot && tab === "browser" ? (0, import_react57.createElement)(BrowserCards, { bot, sessionId, roster, actions, useBrowserTabs, useBrowserPages }) : null
+      bot && tab === "browser" ? (0, import_react57.createElement)(BrowserCards, { bot, sessionId, roster, actions, useBrowserTabs, useBrowserPages }) : null,
+      pluginTab ? (0, import_react57.createElement)(pluginTab.component, { sessionId: part, subjectId: sessionId, bot, room: room2 }) : null
     )
   ];
 }
@@ -27273,7 +27295,7 @@ function apply(ctx) {
     };
   };
   ctx.effect(() => {
-    const hub = { registerShape, registerTheme, themes: () => Object.keys(allThemes()), shapes: () => Object.keys(SHAPES) };
+    const hub = { registerShape, registerTheme, registerDetailsTab, themes: () => Object.keys(allThemes()), shapes: () => Object.keys(SHAPES) };
     const queued = Array.isArray(window.dshBotQueue) ? window.dshBotQueue : [];
     window.dshBot = hub;
     window.dshBotQueue = { push: (task) => {
