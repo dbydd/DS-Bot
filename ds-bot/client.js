@@ -665,10 +665,12 @@ var ZH = {
   "DS Bot settings": "DS Bot 设置",
   "Settings pages": "设置页面",
   "Core & Team": "基础与团队",
+  "Bots & Groups": "Bot 与群聊",
   "Bot Scoped": "Bot 专属配置",
   "Staged & Experimental": "实验与储备能力",
   System: "系统",
   Staged: "储备",
+  "Staged capability: this is an isolated, experimental capability, kept apart from the production workspace and daily Bot chats.": "⚠️ 储备能力：此项为隔离储备/实验性能力，与生产工作区及日常 Bot 对话隔离。",
   "Host CUA": "宿主",
   Paths: "路径",
   Sandbox: "沙箱",
@@ -3532,6 +3534,13 @@ body[data-ds-dark-theme] .bt-scrim{background:rgba(0,0,0,.5)}
 .bt-settings-badge[data-tone=subtle]{background:var(--bt-hover);color:var(--bt-ink-3)}
 .bt-settings-badge[data-tone=staged],.bt-settings-badge[data-tone=warn]{background:color-mix(in srgb,var(--bt-star) 16%,transparent);color:var(--bt-star);border-color:color-mix(in srgb,var(--bt-star) 30%,transparent)}
 .bt-settings-badge[data-tone=bot]{background:color-mix(in srgb,var(--bt-accent) 14%,transparent);color:var(--bt-accent);border-color:color-mix(in srgb,var(--bt-accent) 25%,transparent)}
+/* Reserve capabilities sit in their own dashed amber box in the nav, and the page
+   announces itself with the same tinting. */
+.bt-settings-staged-box{margin:10px 4px 6px;padding:8px 6px;border-radius:10px;border:1px dashed color-mix(in srgb,var(--bt-star) 45%,transparent);background:color-mix(in srgb,var(--bt-star) 5%,transparent);flex:none}
+.bt-settings-staged-box .bt-settings-item{opacity:.85;border:.5px solid transparent}
+.bt-settings-staged-box .bt-settings-item:hover{opacity:1;background:color-mix(in srgb,var(--bt-star) 10%,transparent);color:var(--bt-ink)}
+.bt-settings-staged-box .bt-settings-item[aria-current=page]{opacity:1;background:color-mix(in srgb,var(--bt-star) 18%,transparent);border-color:var(--bt-star);color:var(--bt-ink)}
+.bt-staged-banner{padding:10px 14px;margin-bottom:16px;border-radius:10px;border:1px solid color-mix(in srgb,var(--bt-star) 35%,transparent);background:color-mix(in srgb,var(--bt-star) 10%,transparent);color:var(--bt-ink);font-size:12px;line-height:18px}
 /* Usage while another page is open: out of the flow, so it keeps its layout, and not
    rendered. */
 .bt-settings-usage[data-off]{position:absolute;top:0;left:198px;width:calc(var(--bt-set-w) - 198px);height:100%;box-sizing:border-box;content-visibility:hidden;pointer-events:none}
@@ -3966,6 +3975,7 @@ body[data-ds-dark-theme] .bt-theme-chip i{background:var(--da)}
   .bt-settings-nav{width:100%;flex:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px;border:0;border-right:52px solid transparent;border-bottom:.5px solid var(--bt-line);scrollbar-width:thin;box-sizing:border-box}
   .bt-settings-item{flex:none}
   .bt-settings-group-title{display:none}
+  .bt-settings-staged-box{display:flex;align-items:center;margin:0 2px;padding:4px 6px}
   .bt-settings-shell{margin-top:0;margin-left:auto;flex:none}
   .bt-settings-main{width:100%;flex:1;min-height:0;height:auto}
   .bt-settings-usage[data-off]{left:0;width:100%}
@@ -23025,11 +23035,13 @@ var SETTINGS_GROUPS = [
   ["Core & Team", [
     ["general", "General"],
     ["models", "Models"],
-    ["bots", "Bots"],
-    ["groups", "Group chats"],
-    ["im", "IM"],
     ["secrets", "Secrets"],
     ["usage", "Usage"]
+  ]],
+  ["Bots & Groups", [
+    ["bots", "Bots"],
+    ["groups", "Group chats"],
+    ["im", "IM"]
   ]],
   ["Bot Scoped", [
     ["capabilities", "Capabilities", { badge: "Bot", badgeTone: "bot" }],
@@ -23047,6 +23059,8 @@ var SETTINGS_GROUPS = [
   ]]
 ];
 var SETTINGS_PAGES = SETTINGS_GROUPS.flatMap(([, pages]) => pages);
+var STAGED_TITLE = "Staged & Experimental";
+var STAGED_PAGES = ["local-agents", "computer", "connectors", "browser"];
 var PAGE_ICONS = { ...SETTINGS_ICONS, models: SlidersIcon, "local-agents": TerminalIcon, connectors: ConnectorIcon, im: ChatsIcon, capabilities: PlugIcon, browser: GlobeIcon, computer: MonitorIcon, schedules: ClockIcon, secrets: KeyIcon, feedback: FeedbackIcon, about: InfoIcon };
 function SetSection({ title, className = "", children }) {
   return (0, import_react54.createElement)("section", { className: `bt-set-section ${className}`.trim() }, (0, import_react54.createElement)("h3", null, title), (0, import_react54.createElement)("div", { className: "bt-set-card" }, children));
@@ -23388,6 +23402,20 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false 
   const [usageOpened, setUsageOpened] = (0, import_react54.useState)(shown === "usage");
   if (shown === "usage" && !usageOpened) setUsageOpened(true);
   const errorLine = error ? (0, import_react54.createElement)("div", { className: "bt-error", role: "alert", style: { padding: 0 } }, error) : null;
+  const stagedShown = STAGED_PAGES.includes(shown);
+  const navItem = ([key, text, meta]) => (0, import_react54.createElement)(
+    "button",
+    {
+      key,
+      type: "button",
+      className: "bt-settings-item",
+      "aria-current": shown === key ? "page" : void 0,
+      onClick: () => actions.openSettings(key)
+    },
+    (0, import_react54.createElement)(PAGE_ICONS[key]),
+    (0, import_react54.createElement)("span", { className: "bt-settings-item-label" }, t(text)),
+    meta ? (0, import_react54.createElement)("span", { className: "bt-settings-badge", "data-tone": meta.badgeTone }, t(meta.badge)) : null
+  );
   return (0, import_react54.createElement)(
     "div",
     { className: "bt-settings-layer", "data-leaving": leaving || void 0 },
@@ -23399,21 +23427,16 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false 
         "nav",
         { ref: nav.box, className: "bt-settings-nav", "aria-label": t("Settings pages") },
         (0, import_react54.createElement)("span", { ref: nav.thumb, className: "bt-thumb", "aria-hidden": true }),
-        pages.flatMap(([title, group]) => [
+        pages.flatMap(([title, group]) => title === STAGED_TITLE ? [
+          (0, import_react54.createElement)(
+            "div",
+            { key: title, className: "bt-settings-staged-box" },
+            (0, import_react54.createElement)("div", { className: "bt-settings-group-title" }, t(title)),
+            ...group.map(navItem)
+          )
+        ] : [
           (0, import_react54.createElement)("div", { key: title, className: "bt-settings-group-title" }, t(title)),
-          ...group.map(([key, text, meta]) => (0, import_react54.createElement)(
-            "button",
-            {
-              key,
-              type: "button",
-              className: "bt-settings-item",
-              "aria-current": shown === key ? "page" : void 0,
-              onClick: () => actions.openSettings(key)
-            },
-            (0, import_react54.createElement)(PAGE_ICONS[key]),
-            (0, import_react54.createElement)("span", { className: "bt-settings-item-label" }, t(text)),
-            meta ? (0, import_react54.createElement)("span", { className: "bt-settings-badge", "data-tone": meta.badgeTone }, t(meta.badge)) : null
-          ))
+          ...group.map(navItem)
         ]),
         actions.openHarnessSettings ? (0, import_react54.createElement)("button", {
           type: "button",
@@ -23437,6 +23460,7 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false 
         shown === "usage" ? null : (0, import_react54.createElement)(
           "div",
           { key: pageKey, className: "bt-settings-scroll bt-settings-page", "data-move": last.current.move },
+          stagedShown ? (0, import_react54.createElement)("div", { className: "bt-staged-banner", role: "note" }, t("Staged capability: this is an isolated, experimental capability, kept apart from the production workspace and daily Bot chats.")) : null,
           errorLine,
           shown === "computer" ? (0, import_react54.createElement)(ComputerPage, { roster, actions, run: run2, Section: SetSection, Row: SetRow, Switch }) : null,
           shown === "general" ? (0, import_react54.createElement)(GeneralPage, { roster, actions, run: run2 }) : null,

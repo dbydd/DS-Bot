@@ -36,8 +36,10 @@ const capitalize = word => word[0].toUpperCase() + word.slice(1)
 // daily use.
 const SETTINGS_GROUPS = [
   ['Core & Team', [
-    ['general', 'General'], ['models', 'Models'], ['bots', 'Bots'], ['groups', 'Group chats'],
-    ['im', 'IM'], ['secrets', 'Secrets'], ['usage', 'Usage'],
+    ['general', 'General'], ['models', 'Models'], ['secrets', 'Secrets'], ['usage', 'Usage'],
+  ]],
+  ['Bots & Groups', [
+    ['bots', 'Bots'], ['groups', 'Group chats'], ['im', 'IM'],
   ]],
   ['Bot Scoped', [
     ['capabilities', 'Capabilities', { badge: 'Bot', badgeTone: 'bot' }],
@@ -54,6 +56,10 @@ const SETTINGS_GROUPS = [
   ]],
 ]
 const SETTINGS_PAGES = SETTINGS_GROUPS.flatMap(([, pages]) => pages)
+// Staged pages live in their own dashed box in the nav and announce themselves on
+// the page, so reserve capabilities never read as daily-use settings.
+const STAGED_TITLE = 'Staged & Experimental'
+const STAGED_PAGES = ['local-agents', 'computer', 'connectors', 'browser']
 const PAGE_ICONS = { ...SETTINGS_ICONS, models: SlidersIcon, 'local-agents': TerminalIcon, connectors: ConnectorIcon, im: ChatsIcon, capabilities: PlugIcon, browser: GlobeIcon, computer: MonitorIcon, schedules: ClockIcon, secrets: KeyIcon, feedback: FeedbackIcon, about: InfoIcon }
 
 function SetSection({ title, className = '', children }) {
@@ -302,17 +308,23 @@ export function SettingsDialog({ page, id, roster, actions, useUpdate, leaving =
   const [usageOpened, setUsageOpened] = useState(shown === 'usage')
   if (shown === 'usage' && !usageOpened) setUsageOpened(true)
   const errorLine = error ? h('div', { className: 'bt-error', role: 'alert', style: { padding: 0 } }, error) : null
+  const stagedShown = STAGED_PAGES.includes(shown)
+  const navItem = ([key, text, meta]) => h('button', {
+    key, type: 'button', className: 'bt-settings-item', 'aria-current': shown === key ? 'page' : undefined, onClick: () => actions.openSettings(key),
+  }, h(PAGE_ICONS[key]), h('span', { className: 'bt-settings-item-label' }, t(text)),
+    meta ? h('span', { className: 'bt-settings-badge', 'data-tone': meta.badgeTone }, t(meta.badge)) : null)
   return h('div', { className: 'bt-settings-layer', 'data-leaving': leaving || undefined },
     h('div', { className: 'bt-scrim', onMouseDown: close }),
     h('div', { className: 'bt-settings', role: 'dialog', 'aria-modal': true, 'aria-label': t('DS Bot settings') },
       h('nav', { ref: nav.box, className: 'bt-settings-nav', 'aria-label': t('Settings pages') },
         h('span', { ref: nav.thumb, className: 'bt-thumb', 'aria-hidden': true }),
-        pages.flatMap(([title, group]) => [
+        pages.flatMap(([title, group]) => title === STAGED_TITLE ? [
+          h('div', { key: title, className: 'bt-settings-staged-box' },
+            h('div', { className: 'bt-settings-group-title' }, t(title)),
+            ...group.map(navItem)),
+        ] : [
           h('div', { key: title, className: 'bt-settings-group-title' }, t(title)),
-          ...group.map(([key, text, meta]) => h('button', {
-            key, type: 'button', className: 'bt-settings-item', 'aria-current': shown === key ? 'page' : undefined, onClick: () => actions.openSettings(key),
-          }, h(PAGE_ICONS[key]), h('span', { className: 'bt-settings-item-label' }, t(text)),
-            meta ? h('span', { className: 'bt-settings-badge', 'data-tone': meta.badgeTone }, t(meta.badge)) : null)),
+          ...group.map(navItem),
         ]),
         actions.openHarnessSettings ? h('button', {
           type: 'button', className: 'bt-settings-item bt-settings-shell', title: t('Models, providers, and the rest of DeepSeek Harness'),
@@ -323,6 +335,7 @@ export function SettingsDialog({ page, id, roster, actions, useUpdate, leaving =
           back ? h('button', { type: 'button', className: 'bt-icon-btn', 'aria-label': back, title: back, onClick: () => actions.openSettings(shown) }, h(ChevronLeftIcon)) : null,
           h('h2', { key: bot?.id ?? room?.id ?? shown }, bot?.name ?? room?.name ?? label)),
         shown === 'usage' ? null : h('div', { key: pageKey, className: 'bt-settings-scroll bt-settings-page', 'data-move': last.current.move },
+          stagedShown ? h('div', { className: 'bt-staged-banner', role: 'note' }, t('Staged capability: this is an isolated, experimental capability, kept apart from the production workspace and daily Bot chats.')) : null,
           errorLine,
           shown === 'computer' ? h(ComputerPage, { roster, actions, run, Section: SetSection, Row: SetRow, Switch }) : null,
           shown === 'general' ? h(GeneralPage, { roster, actions, run }) : null,
