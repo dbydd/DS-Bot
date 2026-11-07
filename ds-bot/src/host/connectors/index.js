@@ -18,7 +18,7 @@ import { output } from '../tools.js'
 
 export const GITHUB = 'github'
 export const GITHUB_SECRET = 'GITHUB_TOKEN'
-const MCP_CLIENT = '@deepseek-ai/dsh-mcp-client'
+const MCP_CLIENT = 'omd-mcp-paths'
 const CHECK_TIMEOUT_MS = 15_000
 const SIGN_IN_TIMEOUT_MS = 10 * 60_000
 const SECRET_REF = /\$DSH_SECRET_([A-Z][A-Z0-9_]*)/g

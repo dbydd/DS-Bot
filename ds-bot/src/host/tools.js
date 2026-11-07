@@ -24,6 +24,8 @@ const DELEGATION_TOOLS = ['subagent', 'subagent_fork', 'subagent_codex', 'subage
 // scope, so each group is masked on its own.
 const HIDDEN_TOOL_GROUPS = [[BLOCKING_QUESTION_TOOL, ...GOAL_TOOLS], DELEGATION_TOOLS]
 const HIDDEN_TOOLS = HIDDEN_TOOL_GROUPS.flat()
+const dynamicAllowedTools = new Set()
+const dynamicTeamTools = []
 // The guidance DSH writes into the prompt for the hidden tools. Agent Teams makes
 // every root Session a Team Lead and tells it to spawn teammates in `team:policy`;
 // its `team:identity` context is required, so DSH puts it back after any filter.
@@ -862,9 +864,10 @@ export function install(rt) {
       const assembled = await next()
       // DSH 0.2.2 adds the tool list after this waterfall (#814), so only an
       // older assembly still carries tools to drop here.
+      const effectiveHidden = HIDDEN_TOOLS.filter(name => !dynamicAllowedTools.has(name))
       return {
         ...assembled,
-        ...Array.isArray(assembled.tools) ? { tools: assembled.tools.filter(tool => !HIDDEN_TOOLS.includes(tool.name)) } : {},
+        ...Array.isArray(assembled.tools) ? { tools: assembled.tools.filter(tool => !effectiveHidden.includes(tool.name)) } : {},
         sections: assembled.sections.filter(section => !HIDDEN_SECTIONS.has(section.name)),
       }
     })
@@ -985,6 +988,7 @@ export function install(rt) {
   // goal made there is blocked.
   ctx.tools.guard((exec) => {
     if (!rt.isBotSession(exec.agent?.id)) return undefined
+    if (dynamicAllowedTools.has(exec.name)) return undefined
     if (exec.name === BLOCKING_QUESTION_TOOL) return `Bots cannot use ${BLOCKING_QUESTION_TOOL}. Ask with ask_user in your own chat, or ask in your reply.`
     const target = exec.arguments?.target
     if (SCHEDULE_TARGET_TOOLS.includes(exec.name) && target !== undefined && target !== 'this_session') return SCHEDULE_TARGET_REFUSAL
@@ -1182,6 +1186,37 @@ export function install(rt) {
       },
     }))
   }
+
+  rt.registerPublicTool = (def) => {
+    if (!def || typeof def.name !== 'string') throw new Error('Tool definition needs a name')
+    rt.teamTools.push(def)
+    dynamicTeamTools.push(def)
+    dynamicAllowedTools.add(def.name)
+    for (const [id, held] of scoped) {
+      if (!held.tools || !held.agent?.ctx?.tools) continue
+      try {
+        const lift = held.agent.ctx.tools.register(def)
+        if (typeof lift === 'function') held.disposers.push(lift)
+      } catch {}
+    }
+    return () => {
+      const idx = rt.teamTools.indexOf(def)
+      if (idx !== -1) rt.teamTools.splice(idx, 1)
+      const dynIdx = dynamicTeamTools.indexOf(def)
+      if (dynIdx !== -1) dynamicTeamTools.splice(dynIdx, 1)
+      dynamicAllowedTools.delete(def.name)
+    }
+  }
+
+  rt.allowPublicTool = (names) => {
+    const list = Array.isArray(names) ? names : [names]
+    for (const name of list) dynamicAllowedTools.add(name)
+    return () => {
+      for (const name of list) dynamicAllowedTools.delete(name)
+    }
+  }
+
+  rt.isPublicToolAllowed = (toolName) => dynamicAllowedTools.has(toolName)
 
   Object.assign(rt, { pickRoom, hideBotUnusedTools, syncScopedTools, addTeamTool, removeTeamTool, reapplyToolMasks })
 }

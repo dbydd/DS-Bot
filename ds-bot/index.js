@@ -52,6 +52,22 @@ export { COLORS } from './src/host/constants.js'
 export const name = 'ds-bot'
 export const inject = ['llm', 'tools', 'systemPrompt', 'sessionController', 'sessions', 'sessionTitle', 'workspaceRegistry', 'connection']
 
+export class DsBotService {
+  constructor(ctx, rt) {
+    this.ctx = ctx
+    this.rt = rt
+  }
+  registerTool(tool, options = {}) {
+    return this.rt.registerPublicTool(tool, options)
+  }
+  allowTool(names, options = {}) {
+    return this.rt.allowPublicTool(names, options)
+  }
+  isAllowed(toolName, botId) {
+    return this.rt.isPublicToolAllowed(toolName, botId)
+  }
+}
+
 // Each module's install(rt) registers its listeners, tools, and effects, and puts on `rt`
 // the functions other modules call; they call them through `rt` at run time, never during
 // install. Listeners run and tools are listed in registration order, so this order holds:
@@ -60,7 +76,8 @@ export const inject = ['llm', 'tools', 'systemPrompt', 'sessionController', 'ses
 const MODULES = [diagnostics, store, models, providers, permissions, turns, steer, handoffs, requests, delivery, roster, folders, privacy, agents, prompt, timeContext, tools, chatIndex, groups, goals, approvals, resume, memory, parts, images, avatarLibrary, secrets, connectors, capabilities, learning, schedules, browser, browserPlugins, computer, usage, update, dshUpdate, thinking, feed, im, channel, officeSkills, goalSkills, localAgents]
 
 export function apply(ctx, config = {}) {
-  createRuntime(ctx, config)
+  const rt = createRuntime(ctx, config)
+  ctx.provide('dsBot', new DsBotService(ctx, rt))
 }
 
 export function createRuntime(ctx, config = {}) {

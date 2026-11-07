@@ -85,7 +85,7 @@ export function install(rt) {
       ...(askedBy ? { askedBy } : {}),
       ...(fromRoomId ? { senderRoomId: fromRoomId } : {}),
     }
-    const relay = fromId !== undefined && toId !== undefined && roomId === undefined && sessionId === undefined && files.length === 0
+    const relay = fromId !== undefined && toId !== undefined && roomId === undefined && sessionId === undefined && files.length === 0 && images.length === 0
       ? ctx.get?.('botRelay')
       : undefined
     if (relay !== undefined) {
