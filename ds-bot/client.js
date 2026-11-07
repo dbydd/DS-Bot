@@ -664,6 +664,14 @@ var ZH = {
   "Back to group chats": "返回群聊列表",
   "DS Bot settings": "DS Bot 设置",
   "Settings pages": "设置页面",
+  "Core & Team": "基础与团队",
+  "Bot Scoped": "Bot 专属配置",
+  "Staged & Experimental": "实验与储备能力",
+  System: "系统",
+  Staged: "储备",
+  "Host CUA": "宿主",
+  Paths: "路径",
+  Sandbox: "沙箱",
   "Models, providers, and the rest of DeepSeek Harness": "模型、服务商和 DeepSeek Harness 的其他设置",
   "Harness settings": "Harness 设置",
   "Open Harness settings": "打开 Harness 设置",
@@ -3515,6 +3523,15 @@ body[data-ds-dark-theme] .bt-scrim{background:rgba(0,0,0,.5)}
 .bt-settings-nav[data-glide] .bt-settings-item[aria-current=page]{background:transparent}
 .bt-settings-shell{margin-top:auto}
 .bt-settings-item>svg{flex:none}
+/* Section titles sit between the page groups; a page's badge marks it as
+   Bot-scoped, staged, or sandboxed so it reads apart from daily-use pages. */
+.bt-settings-group-title{padding:12px 8px 2px;font-size:11px;line-height:14px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--bt-ink-3);flex:none;pointer-events:none;user-select:none}
+.bt-settings-group-title:first-child{padding-top:2px}
+.bt-settings-item-label{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-settings-badge{display:inline-flex;flex:none;align-items:center;border-radius:999px;border:.5px solid transparent;padding:1px 6px;font-size:10px;line-height:14px;font-weight:500;background:var(--bt-hover);color:var(--bt-ink-3)}
+.bt-settings-badge[data-tone=subtle]{background:var(--bt-hover);color:var(--bt-ink-3)}
+.bt-settings-badge[data-tone=staged],.bt-settings-badge[data-tone=warn]{background:color-mix(in srgb,var(--bt-star) 16%,transparent);color:var(--bt-star);border-color:color-mix(in srgb,var(--bt-star) 30%,transparent)}
+.bt-settings-badge[data-tone=bot]{background:color-mix(in srgb,var(--bt-accent) 14%,transparent);color:var(--bt-accent);border-color:color-mix(in srgb,var(--bt-accent) 25%,transparent)}
 /* Usage while another page is open: out of the flow, so it keeps its layout, and not
    rendered. */
 .bt-settings-usage[data-off]{position:absolute;top:0;left:198px;width:calc(var(--bt-set-w) - 198px);height:100%;box-sizing:border-box;content-visibility:hidden;pointer-events:none}
@@ -3948,6 +3965,7 @@ body[data-ds-dark-theme] .bt-theme-chip i{background:var(--da)}
      right border keeps the last tab clear of the close button. */
   .bt-settings-nav{width:100%;flex:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px;border:0;border-right:52px solid transparent;border-bottom:.5px solid var(--bt-line);scrollbar-width:thin;box-sizing:border-box}
   .bt-settings-item{flex:none}
+  .bt-settings-group-title{display:none}
   .bt-settings-shell{margin-top:0;margin-left:auto;flex:none}
   .bt-settings-main{width:100%;flex:1;min-height:0;height:auto}
   .bt-settings-usage[data-off]{left:0;width:100%}
@@ -23003,7 +23021,32 @@ function LocalAgentsPage({ run: run2, Section: Section2, Row: Row4 }) {
 // src/client/settings.js
 var import_react54 = require("react");
 var capitalize2 = (word) => word[0].toUpperCase() + word.slice(1);
-var SETTINGS_PAGES = [["general", "General"], ["models", "Models"], ["local-agents", "Local agents"], ["bots", "Bots"], ["groups", "Group chats"], ["connectors", "Connectors"], ["im", "IM"], ["capabilities", "Capabilities"], ["browser", "Browser"], ["computer", "Computer use"], ["schedules", "Scheduled tasks"], ["usage", "Usage"], ["secrets", "Secrets"], ["feedback", "Feedback"], ["about", "About DS Bot"]];
+var SETTINGS_GROUPS = [
+  ["Core & Team", [
+    ["general", "General"],
+    ["models", "Models"],
+    ["bots", "Bots"],
+    ["groups", "Group chats"],
+    ["im", "IM"],
+    ["secrets", "Secrets"],
+    ["usage", "Usage"]
+  ]],
+  ["Bot Scoped", [
+    ["capabilities", "Capabilities", { badge: "Bot", badgeTone: "bot" }],
+    ["schedules", "Scheduled tasks", { badge: "Bot", badgeTone: "bot" }]
+  ]],
+  ["Staged & Experimental", [
+    ["local-agents", "Local agents", { badge: "Staged", badgeTone: "staged" }],
+    ["computer", "Computer use", { badge: "Host CUA", badgeTone: "warn" }],
+    ["connectors", "Connectors", { badge: "Paths", badgeTone: "subtle" }],
+    ["browser", "Browser", { badge: "Sandbox", badgeTone: "subtle" }]
+  ]],
+  ["System", [
+    ["feedback", "Feedback"],
+    ["about", "About DS Bot"]
+  ]]
+];
+var SETTINGS_PAGES = SETTINGS_GROUPS.flatMap(([, pages]) => pages);
 var PAGE_ICONS = { ...SETTINGS_ICONS, models: SlidersIcon, "local-agents": TerminalIcon, connectors: ConnectorIcon, im: ChatsIcon, capabilities: PlugIcon, browser: GlobeIcon, computer: MonitorIcon, schedules: ClockIcon, secrets: KeyIcon, feedback: FeedbackIcon, about: InfoIcon };
 function SetSection({ title, className = "", children }) {
   return (0, import_react54.createElement)("section", { className: `bt-set-section ${className}`.trim() }, (0, import_react54.createElement)("h3", null, title), (0, import_react54.createElement)("div", { className: "bt-set-card" }, children));
@@ -23329,10 +23372,11 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false 
   });
   const bot = page === "bots" && id ? roster.byId[id] : void 0;
   const room2 = page === "groups" && id ? roster.roomsById[id] : void 0;
-  const pages = SETTINGS_PAGES.filter(([key]) => key !== "models" || actions.providers !== void 0);
-  const shown = pages.some(([key]) => key === page) ? page : "general";
+  const pages = SETTINGS_GROUPS.map(([title, group]) => [title, group.filter(([key]) => key !== "models" || actions.providers !== void 0)]).filter(([, group]) => group.length > 0);
+  const known = pages.flatMap(([, group]) => group);
+  const shown = known.some(([key]) => key === page) ? page : "general";
   const usageFocus = shown === "usage" && id ? id : null;
-  const label = t(pages.find(([key]) => key === shown)[1]);
+  const label = t(known.find(([key]) => key === shown)[1]);
   const back = bot ? t("Back to Bots") : room2 ? t("Back to group chats") : usageFocus ? t("All usage") : null;
   const nav = useGlide(shown, { axis: "y" });
   const pageKey = `${shown}:${bot?.id ?? room2?.id ?? ""}`;
@@ -23355,13 +23399,22 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false 
         "nav",
         { ref: nav.box, className: "bt-settings-nav", "aria-label": t("Settings pages") },
         (0, import_react54.createElement)("span", { ref: nav.thumb, className: "bt-thumb", "aria-hidden": true }),
-        pages.map(([key, text]) => (0, import_react54.createElement)("button", {
-          key,
-          type: "button",
-          className: "bt-settings-item",
-          "aria-current": shown === key ? "page" : void 0,
-          onClick: () => actions.openSettings(key)
-        }, (0, import_react54.createElement)(PAGE_ICONS[key]), t(text))),
+        pages.flatMap(([title, group]) => [
+          (0, import_react54.createElement)("div", { key: title, className: "bt-settings-group-title" }, t(title)),
+          ...group.map(([key, text, meta]) => (0, import_react54.createElement)(
+            "button",
+            {
+              key,
+              type: "button",
+              className: "bt-settings-item",
+              "aria-current": shown === key ? "page" : void 0,
+              onClick: () => actions.openSettings(key)
+            },
+            (0, import_react54.createElement)(PAGE_ICONS[key]),
+            (0, import_react54.createElement)("span", { className: "bt-settings-item-label" }, t(text)),
+            meta ? (0, import_react54.createElement)("span", { className: "bt-settings-badge", "data-tone": meta.badgeTone }, t(meta.badge)) : null
+          ))
+        ]),
         actions.openHarnessSettings ? (0, import_react54.createElement)("button", {
           type: "button",
           className: "bt-settings-item bt-settings-shell",

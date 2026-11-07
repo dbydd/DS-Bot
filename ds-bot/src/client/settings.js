@@ -28,10 +28,32 @@ import { t } from './i18n.js'
 
 const capitalize = word => word[0].toUpperCase() + word.slice(1)
 
-// Settings dialog: a 198px page list beside the page. Bots and group chats each list
-// their members, and one opens on its own settings form. Usage widens the dialog.
-// Models is there wherever the host serves the model providers, beside DSH's own settings.
-const SETTINGS_PAGES = [['general', 'General'], ['models', 'Models'], ['local-agents', 'Local agents'], ['bots', 'Bots'], ['groups', 'Group chats'], ['connectors', 'Connectors'], ['im', 'IM'], ['capabilities', 'Capabilities'], ['browser', 'Browser'], ['computer', 'Computer use'], ['schedules', 'Scheduled tasks'], ['usage', 'Usage'], ['secrets', 'Secrets'], ['feedback', 'Feedback'], ['about', 'About DS Bot']]
+// Settings dialog: a 198px page list beside the page, grouped under small titles.
+// Bots and group chats each list their members, and one opens on its own settings
+// form. Usage widens the dialog. Models is there wherever the host serves the model
+// providers, beside DSH's own settings. A page can carry a badge (`badge`, with a
+// `badgeTone`) so a staged or Bot-scoped page reads differently from the ones in
+// daily use.
+const SETTINGS_GROUPS = [
+  ['Core & Team', [
+    ['general', 'General'], ['models', 'Models'], ['bots', 'Bots'], ['groups', 'Group chats'],
+    ['im', 'IM'], ['secrets', 'Secrets'], ['usage', 'Usage'],
+  ]],
+  ['Bot Scoped', [
+    ['capabilities', 'Capabilities', { badge: 'Bot', badgeTone: 'bot' }],
+    ['schedules', 'Scheduled tasks', { badge: 'Bot', badgeTone: 'bot' }],
+  ]],
+  ['Staged & Experimental', [
+    ['local-agents', 'Local agents', { badge: 'Staged', badgeTone: 'staged' }],
+    ['computer', 'Computer use', { badge: 'Host CUA', badgeTone: 'warn' }],
+    ['connectors', 'Connectors', { badge: 'Paths', badgeTone: 'subtle' }],
+    ['browser', 'Browser', { badge: 'Sandbox', badgeTone: 'subtle' }],
+  ]],
+  ['System', [
+    ['feedback', 'Feedback'], ['about', 'About DS Bot'],
+  ]],
+]
+const SETTINGS_PAGES = SETTINGS_GROUPS.flatMap(([, pages]) => pages)
 const PAGE_ICONS = { ...SETTINGS_ICONS, models: SlidersIcon, 'local-agents': TerminalIcon, connectors: ConnectorIcon, im: ChatsIcon, capabilities: PlugIcon, browser: GlobeIcon, computer: MonitorIcon, schedules: ClockIcon, secrets: KeyIcon, feedback: FeedbackIcon, about: InfoIcon }
 
 function SetSection({ title, className = '', children }) {
@@ -254,10 +276,15 @@ export function SettingsDialog({ page, id, roster, actions, useUpdate, leaving =
   // A Bot or group deleted while its form is open leaves its page on the list.
   const bot = page === 'bots' && id ? roster.byId[id] : undefined
   const room = page === 'groups' && id ? roster.roomsById[id] : undefined
-  const pages = SETTINGS_PAGES.filter(([key]) => key !== 'models' || actions.providers !== undefined)
-  const shown = pages.some(([key]) => key === page) ? page : 'general'
+  // A group drops out when filtering leaves it empty, so the models gate never
+  // strands a title above nothing.
+  const pages = SETTINGS_GROUPS
+    .map(([title, group]) => [title, group.filter(([key]) => key !== 'models' || actions.providers !== undefined)])
+    .filter(([, group]) => group.length > 0)
+  const known = pages.flatMap(([, group]) => group)
+  const shown = known.some(([key]) => key === page) ? page : 'general'
   const usageFocus = shown === 'usage' && id ? id : null
-  const label = t(pages.find(([key]) => key === shown)[1])
+  const label = t(known.find(([key]) => key === shown)[1])
   const back = bot ? t('Back to Bots') : room ? t('Back to group chats') : usageFocus ? t('All usage') : null
   const nav = useGlide(shown, { axis: 'y' })
   // A page enters from the right when it is one level in, from the left when it comes
@@ -280,9 +307,13 @@ export function SettingsDialog({ page, id, roster, actions, useUpdate, leaving =
     h('div', { className: 'bt-settings', role: 'dialog', 'aria-modal': true, 'aria-label': t('DS Bot settings') },
       h('nav', { ref: nav.box, className: 'bt-settings-nav', 'aria-label': t('Settings pages') },
         h('span', { ref: nav.thumb, className: 'bt-thumb', 'aria-hidden': true }),
-        pages.map(([key, text]) => h('button', {
-          key, type: 'button', className: 'bt-settings-item', 'aria-current': shown === key ? 'page' : undefined, onClick: () => actions.openSettings(key),
-        }, h(PAGE_ICONS[key]), t(text))),
+        pages.flatMap(([title, group]) => [
+          h('div', { key: title, className: 'bt-settings-group-title' }, t(title)),
+          ...group.map(([key, text, meta]) => h('button', {
+            key, type: 'button', className: 'bt-settings-item', 'aria-current': shown === key ? 'page' : undefined, onClick: () => actions.openSettings(key),
+          }, h(PAGE_ICONS[key]), h('span', { className: 'bt-settings-item-label' }, t(text)),
+            meta ? h('span', { className: 'bt-settings-badge', 'data-tone': meta.badgeTone }, t(meta.badge)) : null)),
+        ]),
         actions.openHarnessSettings ? h('button', {
           type: 'button', className: 'bt-settings-item bt-settings-shell', title: t('Models, providers, and the rest of DeepSeek Harness'),
           onClick: () => { close(); actions.openHarnessSettings() },
