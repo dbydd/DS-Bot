@@ -162,13 +162,11 @@ test('cancel closes the confirm without signing out', async () => {
   assert.deepEqual(side.calls, ['hasRunningAccountTasks'])
 })
 
-test('Models and API keys opens DS Bot\'s Models page, or DSH\'s own where the host serves no providers', () => {
+test('Models and API keys opens the Models page of Settings', () => {
   const opened = []
-  const page = launcher({ actions: { providers: () => {}, openModels: () => opened.push('models'), openHarnessModels: () => opened.push('harness') } })
+  const page = launcher({ actions: { providers: () => {}, openModels: () => opened.push('models') } })
   page.item(page.open(), 'Models and API keys').props.onClick()
-  const shell = launcher({ actions: { openHarnessModels: () => opened.push('harness') } })
-  shell.item(shell.open(), 'Models and API keys').props.onClick()
-  assert.deepEqual(opened, ['models', 'harness'])
+  assert.deepEqual(opened, ['models'])
   const none = launcher()
   assert.equal(none.item(none.open(), 'Models and API keys'), undefined)
 })
@@ -192,10 +190,11 @@ test('Sign in to DeepSeek shows only while the account plugin says signed out', 
 
 // #452: the Connect plugins button left the Bot footer; the account menu that
 // stays keeps the way into the connectors and the automation panel.
-test('the account menu opens the connectors and the automation panel', () => {
+test('the account menu opens the connectors and the automation panel, without a classic Agent mode switch', () => {
   const calls = []
-  const side = launcher({ actions: { openConnectors: () => calls.push('connectors'), selectPanel: id => calls.push(id) } })
+  const side = launcher({ actions: { openConnectors: () => calls.push('connectors'), selectPanel: id => calls.push(id), setSurface: mode => calls.push(mode) } })
   const menu = side.open()
+  assert.equal(side.item(menu, 'Switch to classic Agent mode'), undefined)
   side.item(menu, 'Connectors').props.onClick()
   side.item(menu, 'Automation tasks').props.onClick()
   assert.deepEqual(calls, ['connectors', 'schedules'])

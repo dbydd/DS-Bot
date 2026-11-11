@@ -11,10 +11,10 @@ const { outputFiles } = await build({
     contents: [
       "export { ToolCell, TriggerCell, callTree, CellEmpty, Bubbles } from './src/client/cells.js'",
       "export { stackReplies } from './src/shared/group-replies.js'",
-      "export { QuestionDock } from './src/client/questions.js'",
+      "export { QuestionDock, SettledQuestion } from './src/client/questions.js'",
       "export { SecretDock } from './src/client/secret-card.js'",
       "export { countCards } from './src/client/sources.js'",
-      "export { ViewMenuList, WidgetView } from './src/client/widget-cell.js'",
+      "export { ViewMenuList, WidgetView, WidgetDock } from './src/client/widget-cell.js'",
     ].join('\n'),
     resolveDir: fileURLToPath(new URL('..', import.meta.url)),
   },
@@ -47,10 +47,15 @@ class FakeObserver {
 // The markdown the host's renderer is given, and what DS Bot's copy controls write.
 const markdownTexts = []
 const copiedTexts = []
+const clipboard = {}
+class ClipboardItem {
+  constructor(items) { this.getType = type => Promise.resolve(items[type]) }
+}
 const module = { exports: {} }
 runInNewContext(outputFiles[0].text, {
   module, exports: module.exports,
   document: { hidden: false }, TextEncoder, MutationObserver: FakeObserver,
+  navigator: { clipboard }, ClipboardItem, Blob,
   setTimeout: (fn) => { const timer = { fn }; timers.add(timer); return timer },
   clearTimeout: timer => timers.delete(timer),
   require: (name) => {
@@ -65,7 +70,7 @@ runInNewContext(outputFiles[0].text, {
     throw new Error(`Unexpected platform module ${name}`)
   },
 })
-const { ToolCell, TriggerCell, callTree, stackReplies, CellEmpty, Bubbles, QuestionDock, SecretDock, countCards, ViewMenuList, WidgetView } = module.exports
+const { ToolCell, TriggerCell, callTree, stackReplies, CellEmpty, Bubbles, QuestionDock, SettledQuestion, SecretDock, countCards, ViewMenuList, WidgetView, WidgetDock } = module.exports
 
 // Runs the effects collected since the last render; returns the cleanups.
 const mount = () => {
@@ -891,6 +896,58 @@ test('a reaction on a group post stays on that post, also after it draws again',
   assert.deepEqual([chips(draw(first)), chips(draw(sameTurn)), chips(draw(later))], [0, 0, 1])
 })
 
+test('a question or view card closed without an answer on it stays at its call, read-only, with how it closed', () => {
+  const asked = { question: 'Which draft?', detail: 'Pick one', options: [{ label: 'Short', description: 'One page' }, 'Long'] }
+  const pick = { title: 'Pick a lane', view: { type: 'options', id: 'lane', options: [{ label: 'Ship now' }, { label: 'One more pass' }] } }
+  const roster = team({ questions: {}, views: {}, closedCards: { [chief.id]: { 'q-dismissed': 'dismissed', 'q-replied': 'replied', 'v-dismissed': 'dismissed' } } })
+  const dismissed = show(call('ask_user', 'q-dismissed', { args: asked }), { roster })
+  assert.equal(find(dismissed, node => node.props?.className === 'bt-q-gone'), undefined)
+  assert.equal(text(find(dismissed, node => node.props?.className === 'bt-q-badge')), 'Dismissed')
+  // Compact: the question and the badge, no options and nothing to press.
+  assert.equal(text(dismissed), 'Which draft?Dismissed')
+  assert.equal(find(dismissed, node => node.type === 'button'), undefined)
+  const replied = show(call('ask_user', 'q-replied', { args: asked }), { roster })
+  assert.equal(text(find(replied, node => node.props?.className === 'bt-q-badge')), 'Answered by message')
+  // Answered on the card: the reply message carries the card, the call leaves no gap.
+  const answered = show(call('ask_user', 'q-answered', { args: asked }), { roster })
+  assert.ok(find(answered, node => node.props?.className === 'bt-q-gone') !== undefined)
+  const view = show(call('show_view', 'v-dismissed', { args: pick }), { roster })
+  assert.equal(text(view), 'Pick a laneDismissed')
+  assert.equal(find(view, node => node.type === 'button'), undefined)
+  assert.ok(find(show(call('show_view', 'v-answered', { args: pick }), { roster }), node => node.props?.className === 'bt-q-gone') !== undefined)
+})
+
+test('a dock card answered by a message stays above the composer, read-only, until a new card replaces it', () => {
+  const closedViews = { [chief.id]: { id: 'view-1', title: 'Pick a lane', closed: 'replied' } }
+  const dock = over => expand(WidgetDock({
+    sessionId: chief.id, useRoster: select => select(team(over)),
+    useCards: select => select({}), useHeldCards: select => select({}), actions: {},
+  }))
+  const node = dock({ views: {}, closedViews })
+  assert.match(node.props.className, /bt-q-dock/)
+  assert.match(text(node), /Pick a lane/)
+  // "Answered by message", with nothing to submit and no close control.
+  assert.match(text(node), /Answered by message/)
+  assert.equal(find(node, each => each.type === 'button'), undefined)
+  // Dismissed keeps its own label.
+  const dismissed = dock({ views: {}, closedViews: { [chief.id]: { id: 'view-1', title: 'Pick a lane', closed: 'dismissed' } } })
+  assert.match(text(dismissed), /Dismissed/)
+  // An open card takes the dock back.
+  const pending = dock({ views: { [chief.id]: { id: 'view-2', callId: 'v-call', title: 'Next', view: { type: 'options', id: 'lane', options: [{ label: 'A' }] } } }, closedViews })
+  assert.doesNotMatch(text(pending), /Pick a lane/)
+  // A question closed without a call row leaves no dock card at all.
+  assert.equal(dock({ views: {}, closedViews: {} }), null)
+})
+
+test('an answered question card keeps only the chosen rows, each under its card letter, and the own answer after them', () => {
+  const question = { id: 'q', question: 'Which draft?', options: [{ label: 'Short' }, { label: 'Long' }, { label: 'None' }] }
+  const out = expand(SettledQuestion({ question, answer: { selected: ['Long'], custom: 'Both, really' } }))
+  assert.match(out.props.className, /bt-q-answered/)
+  const rows = findAll(out, node => node.props?.className === 'bt-q-opt')
+  assert.deepEqual(rows.map(row => [text(find(row, node => node.props?.className === 'bt-key')), text(find(row, node => node.props?.className === 'bt-q-label'))]), [['B', 'Long'], ['D', 'Both, really']])
+  assert.equal(find(out, node => node.props?.className === 'bt-q-badge'), undefined)
+})
+
 test('a show_view call the host refused draws nothing; a display-only card draws with the trimmed title', () => {
   const cell = (title, view, extra = {}) => show(call('show_view', 'view-call', { args: { title, view, ...extra } }), { roster: team({ views: {} }) })
   const gone = (node) => {
@@ -1046,4 +1103,58 @@ test('a folded code block leaves no copy of only its shown part', async () => {
   assert.ok(markdownTexts.some(given => given.includes('```js')))
   assert.equal(copyOf(short).length, 0)
   effects = []
+})
+
+
+test('an attachment preview copies its full code and never writes a partial read', async () => {
+  const inner = Array.from({ length: 4000 }, (_, i) => `line ${i + 1}`).join('\n')
+  const full = '```js\n' + inner + '\n```'
+  let whole = true
+  const errors = []
+  const bubble = () => expand(Bubbles({
+    texts: [full.slice(0, 1000)], roster: team(), selfId: chief.id, sessionId: chief.id,
+    actions: { reportError: error => errors.push(error.message) },
+    whole: { length: full.length, load: async () => ({ text: full, whole }) },
+    useUi: select => select({ reactions: {} }),
+  }))
+  const copyOf = out => find(out, node => node.type === 'button' && node.props?.className?.includes('bt-fold-copy'))
+  markdownTexts.length = 0
+  copiedTexts.length = 0
+  await copyOf(bubble()).props.onClick()
+  assert.deepEqual(copiedTexts, [inner])
+  assert.ok(markdownTexts.every(text => !text.includes('```')))
+  copiedTexts.length = 0
+  whole = false
+  await copyOf(bubble()).props.onClick()
+  assert.deepEqual(copiedTexts, [])
+  assert.deepEqual(errors, ['Could not read the whole code block'])
+  effects = []
+})
+
+
+test('an attachment starts the clipboard write inside its click before loading the text', async t => {
+  const inner = Array.from({ length: 4000 }, (_, i) => `line ${i + 1}`).join('\n')
+  const full = '```js\n' + inner + '\n```'
+  let release
+  const loaded = new Promise(resolve => { release = resolve })
+  let writing = false
+  clipboard.write = async items => {
+    writing = true
+    const blob = await items[0].getType('text/plain')
+    copiedTexts.push(await blob.text())
+  }
+  t.after(() => { delete clipboard.write; effects = [] })
+  const out = expand(Bubbles({
+    texts: [full.slice(0, 1000)], roster: team(), selfId: chief.id,
+    whole: { length: full.length, load: () => loaded },
+    useUi: select => select({ reactions: {} }),
+  }))
+  copiedTexts.length = 0
+  const button = find(out, node => node.type === 'button' && node.props?.className?.includes('bt-fold-copy'))
+  const copying = button.props.onClick()
+  assert.equal(writing, true, 'write is called synchronously in the gesture')
+  assert.deepEqual(copiedTexts, [], 'nothing is written before the full read')
+  release({ text: full, whole: true })
+  await copying
+  assert.deepEqual(copiedTexts, [inner])
 })
