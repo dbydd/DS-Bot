@@ -49,6 +49,10 @@ const WORKING_DIRECTORY_TOOL = 'working_directory'
 
 export function install(rt) {
   const { ctx, state } = rt
+  // Tools a caller publishes through the dsBot service. They stay out of the
+  // hidden-tool filter and the guard, and each runtime keeps its own set.
+  const dynamicAllowedTools = new Set()
+  const dynamicTeamTools = []
 
   const callerBot = (exec) => rt.botOf(rt.selfOf(exec.agent?.id))
   const callerRoom = (exec) => {
@@ -908,9 +912,10 @@ export function install(rt) {
       const assembled = await next()
       // DSH 0.2.2 adds the tool list after this waterfall (#814), so only an
       // older assembly still carries tools to drop here.
+      const effectiveHidden = HIDDEN_TOOLS.filter(name => !dynamicAllowedTools.has(name))
       return {
         ...assembled,
-        ...Array.isArray(assembled.tools) ? { tools: assembled.tools.filter(tool => !HIDDEN_TOOLS.includes(tool.name)) } : {},
+        ...Array.isArray(assembled.tools) ? { tools: assembled.tools.filter(tool => !effectiveHidden.includes(tool.name)) } : {},
         sections: assembled.sections.filter(section => !HIDDEN_SECTIONS.has(section.name)),
       }
     })
@@ -1033,6 +1038,7 @@ export function install(rt) {
   // goal made there is blocked.
   ctx.tools.guard((exec) => {
     if (!rt.isBotSession(exec.agent?.id)) return undefined
+    if (dynamicAllowedTools.has(exec.name)) return undefined
     if (exec.name === BLOCKING_QUESTION_TOOL) return `Bots cannot use ${BLOCKING_QUESTION_TOOL}. Ask with ask_user in your own chat, or ask in your reply.`
     const target = exec.arguments?.target
     if (SCHEDULE_TARGET_TOOLS.includes(exec.name) && target !== undefined && target !== 'this_session') return SCHEDULE_TARGET_REFUSAL
@@ -1230,6 +1236,48 @@ export function install(rt) {
       },
     }))
   }
+
+  rt.registerPublicTool = (def) => {
+    if (!def || typeof def.name !== 'string') throw new Error('Tool definition needs a name')
+    rt.teamTools.push(def)
+    dynamicTeamTools.push(def)
+    dynamicAllowedTools.add(def.name)
+    for (const held of scoped.values()) {
+      if (!held.tools || held.relay || typeof held.agent?.ctx?.tools?.register !== 'function') continue
+      try {
+        const lift = held.agent.ctx.tools.register(def)
+        if (typeof lift === 'function') {
+          ;(held.toolLifts ??= new Map()).set(def.name, lift)
+          held.disposers.push(lift)
+        }
+        ;(held.added ??= new Set()).add(def.name)
+        held.unlisted.add(def.name)
+      } catch { /* an agent that refuses it simply lacks the tool */ }
+    }
+    return () => {
+      const idx = rt.teamTools.indexOf(def)
+      if (idx !== -1) rt.teamTools.splice(idx, 1)
+      const dynIdx = dynamicTeamTools.indexOf(def)
+      if (dynIdx !== -1) dynamicTeamTools.splice(dynIdx, 1)
+      dynamicAllowedTools.delete(def.name)
+      for (const held of scoped.values()) {
+        held.toolLifts?.get(def.name)?.()
+        held.toolLifts?.delete(def.name)
+        held.added?.delete(def.name)
+        held.unlisted.delete(def.name)
+      }
+    }
+  }
+
+  rt.allowPublicTool = (names) => {
+    const list = Array.isArray(names) ? names : [names]
+    for (const name of list) dynamicAllowedTools.add(name)
+    return () => {
+      for (const name of list) dynamicAllowedTools.delete(name)
+    }
+  }
+
+  rt.isPublicToolAllowed = (toolName) => dynamicAllowedTools.has(toolName)
 
   Object.assign(rt, { pickRoom, hideBotUnusedTools, syncScopedTools, addTeamTool, removeTeamTool, reapplyToolMasks })
 }
