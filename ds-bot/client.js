@@ -703,6 +703,16 @@ var ZH = {
   "Back to group chats": "返回群聊列表",
   "DS Bot settings": "DS Bot 设置",
   "Settings pages": "设置页面",
+  "Core & Team": "基础与团队",
+  "Bots & Groups": "Bot 与群聊",
+  "Bot Scoped": "Bot 专属配置",
+  "Staged & Experimental": "实验与储备能力",
+  "System": "系统",
+  "Staged": "储备",
+  "Staged capability: this is an isolated, experimental capability, kept apart from the production workspace and daily Bot chats.": "⚠️ 储备能力：此项为隔离储备/实验性能力，与生产工作区及日常 Bot 对话隔离。",
+  "Host CUA": "宿主",
+  "Paths": "路径",
+  "Sandbox": "沙箱",
   "Advanced settings": "高级设置",
   "Back to models": "返回模型",
   "Open Plugins": "打开插件页",
@@ -3634,6 +3644,22 @@ body[data-ds-dark-theme] .bt-scrim{background:rgba(0,0,0,.5)}
 .bt-advanced:hover{background:var(--bt-hover)}
 .bt-advanced>svg{flex:none;color:var(--bt-ink-3)}
 .bt-settings-item>svg{flex:none}
+/* Section titles sit between the page groups; a page's badge marks it as
+   Bot-scoped, staged, or sandboxed so it reads apart from daily-use pages. */
+.bt-settings-group-title{padding:12px 8px 2px;font-size:11px;line-height:14px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--bt-ink-3);flex:none;pointer-events:none;user-select:none}
+.bt-settings-group-title:first-child{padding-top:2px}
+.bt-settings-item-label{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-settings-badge{display:inline-flex;flex:none;align-items:center;border-radius:999px;border:.5px solid transparent;padding:1px 6px;font-size:10px;line-height:14px;font-weight:500;background:var(--bt-hover);color:var(--bt-ink-3)}
+.bt-settings-badge[data-tone=subtle]{background:var(--bt-hover);color:var(--bt-ink-3)}
+.bt-settings-badge[data-tone=staged],.bt-settings-badge[data-tone=warn]{background:color-mix(in srgb,var(--bt-star) 16%,transparent);color:var(--bt-star);border-color:color-mix(in srgb,var(--bt-star) 30%,transparent)}
+.bt-settings-badge[data-tone=bot]{background:color-mix(in srgb,var(--bt-accent) 14%,transparent);color:var(--bt-accent);border-color:color-mix(in srgb,var(--bt-accent) 25%,transparent)}
+/* Reserve capabilities sit in their own dashed amber box in the nav, and the page
+   announces itself with the same tinting. */
+.bt-settings-staged-box{margin:10px 4px 6px;padding:8px 6px;border-radius:10px;border:1px dashed color-mix(in srgb,var(--bt-star) 45%,transparent);background:color-mix(in srgb,var(--bt-star) 5%,transparent);flex:none}
+.bt-settings-staged-box .bt-settings-item{opacity:.85;border:.5px solid transparent}
+.bt-settings-staged-box .bt-settings-item:hover{opacity:1;background:color-mix(in srgb,var(--bt-star) 10%,transparent);color:var(--bt-ink)}
+.bt-settings-staged-box .bt-settings-item[aria-current=page]{opacity:1;background:color-mix(in srgb,var(--bt-star) 18%,transparent);border-color:var(--bt-star);color:var(--bt-ink)}
+.bt-staged-banner{padding:10px 14px;margin-bottom:16px;border-radius:10px;border:1px solid color-mix(in srgb,var(--bt-star) 35%,transparent);background:color-mix(in srgb,var(--bt-star) 10%,transparent);color:var(--bt-ink);font-size:12px;line-height:18px}
 /* Usage while another page is open: out of the flow, so it keeps its layout, and not
    rendered. */
 .bt-settings-usage[data-off]{position:absolute;top:0;left:198px;width:calc(var(--bt-set-w) - 198px);height:100%;box-sizing:border-box;content-visibility:hidden;pointer-events:none}
@@ -4079,6 +4105,8 @@ body[data-ds-dark-theme] .bt-theme-chip i{background:var(--da)}
      right border keeps the last tab clear of the close button. */
   .bt-settings-nav{width:100%;flex:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px;border:0;border-right:52px solid transparent;border-bottom:.5px solid var(--bt-line);scrollbar-width:thin;box-sizing:border-box}
   .bt-settings-item{flex:none}
+  .bt-settings-group-title{display:none}
+  .bt-settings-staged-box{display:flex;align-items:center;margin:0 2px;padding:4px 6px}
   .bt-settings-rule{width:.5px;height:16px;margin:0 4px}
   .bt-settings-main{width:100%;flex:1;min-height:0;height:auto}
   .bt-settings-usage[data-off]{left:0;width:100%}
@@ -21638,8 +21666,35 @@ function LocalAgentsPage({ run: run2, Section: Section2, Row: Row4 }) {
 var import_react47 = require("react");
 var import_dsh_client_ui_primitives2 = require("@deepseek-ai/dsh-client-ui-primitives");
 var capitalize2 = (word) => word[0].toUpperCase() + word.slice(1);
-var SETTINGS_PAGES = [["general", "General"], ["models", "Models"], ["local-agents", "Local agents"], ["bots", "Bots"], ["groups", "Group chats"], ["connectors", "Connectors"], ["im", "IM"], ["capabilities", "Capabilities"], ["browser", "Browser"], ["computer", "Computer use"], ["schedules", "Scheduled tasks"], ["usage", "Usage"], ["secrets", "Secrets"], ["feedback", "Feedback"], ["about", "About DS Bot"]];
-var LAST_PAGES = /* @__PURE__ */ new Set(["feedback", "about"]);
+var SETTINGS_GROUPS = [
+  ["Core & Team", [
+    ["general", "General"],
+    ["models", "Models"],
+    ["secrets", "Secrets"],
+    ["usage", "Usage"]
+  ]],
+  ["Bots & Groups", [
+    ["bots", "Bots"],
+    ["groups", "Group chats"],
+    ["im", "IM"]
+  ]],
+  ["Bot Scoped", [
+    ["capabilities", "Capabilities", { badge: "Bot", badgeTone: "bot" }],
+    ["schedules", "Scheduled tasks", { badge: "Bot", badgeTone: "bot" }]
+  ]],
+  ["Staged & Experimental", [
+    ["local-agents", "Local agents", { badge: "Staged", badgeTone: "staged" }],
+    ["computer", "Computer use", { badge: "Host CUA", badgeTone: "warn" }],
+    ["connectors", "Connectors", { badge: "Paths", badgeTone: "subtle" }],
+    ["browser", "Browser", { badge: "Sandbox", badgeTone: "subtle" }]
+  ]],
+  ["System", [
+    ["feedback", "Feedback"],
+    ["about", "About DS Bot"]
+  ]]
+];
+var STAGED_TITLE = "Staged & Experimental";
+var STAGED_PAGES = ["local-agents", "computer", "connectors", "browser"];
 var MERGED_SECTIONS = /* @__PURE__ */ new Set(["general", "models"]);
 var LOOK_ITEMS = ["appearance", "font-size"];
 var DSH_ICONS = { account: import_dsh_client_ui_primitives2.IconUserOutlineMedium, "agent-presets": import_dsh_client_ui_primitives2.IconAgentPresetOutlineMedium, plugins: import_dsh_client_ui_primitives2.IconPersonalizationOutlineMedium, "archived-sessions": import_dsh_client_ui_primitives2.IconArchiveOutlineMedium };
@@ -22019,13 +22074,14 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false,
   });
   const bot = page === "bots" && id ? roster.byId[id] : void 0;
   const room2 = page === "groups" && id ? roster.roomsById[id] : void 0;
-  const pages = SETTINGS_PAGES.filter(([key]) => key !== "models" || actions.providers !== void 0);
+  const groups = SETTINGS_GROUPS.map(([title, group]) => [title, group.filter(([key]) => key !== "models" || actions.providers !== void 0)]).filter(([, group]) => group.length > 0);
+  const known = groups.flatMap(([, group]) => group);
   const extra = dshPages(dsh);
   const section = page === "dsh" ? extra.find((row) => row.id === id) : void 0;
   const advanced = page === "models" && id === "advanced" && hasSection(dsh, "models");
-  const shown = section ? "dsh" : pages.some(([key]) => key === page) ? page : "general";
+  const shown = section ? "dsh" : known.some(([key]) => key === page) ? page : "general";
   const usageFocus = shown === "usage" && id ? id : null;
-  const label = section ? section.label : advanced ? t("Advanced settings") : t(pages.find(([key]) => key === shown)[1]);
+  const label = section ? section.label : advanced ? t("Advanced settings") : t(known.find(([key]) => key === shown)[1]);
   const back = bot ? t("Back to Bots") : room2 ? t("Back to group chats") : usageFocus ? t("All usage") : advanced ? t("Back to models") : null;
   const nav = useGlide(section ? `dsh:${section.id}` : shown, { axis: "y" });
   const pageKey = `${shown}:${bot?.id ?? room2?.id ?? section?.id ?? (advanced ? "advanced" : "")}`;
@@ -22037,13 +22093,33 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false,
   const [usageOpened, setUsageOpened] = (0, import_react47.useState)(shown === "usage");
   if (shown === "usage" && !usageOpened) setUsageOpened(true);
   const errorLine = error ? (0, import_react47.createElement)("div", { className: "bt-error", role: "alert", style: { padding: 0 } }, error) : null;
-  const pageButton = (key, text) => (0, import_react47.createElement)("button", {
-    key,
-    type: "button",
-    className: "bt-settings-item",
-    "aria-current": shown === key ? "page" : void 0,
-    onClick: () => actions.openSettings(key)
-  }, (0, import_react47.createElement)(PAGE_ICONS[key]), t(text));
+  const stagedShown = STAGED_PAGES.includes(shown);
+  const navItem = ([key, text, meta]) => (0, import_react47.createElement)(
+    "button",
+    {
+      key,
+      type: "button",
+      className: "bt-settings-item",
+      "aria-current": shown === key ? "page" : void 0,
+      onClick: () => actions.openSettings(key)
+    },
+    (0, import_react47.createElement)(PAGE_ICONS[key]),
+    (0, import_react47.createElement)("span", { className: "bt-settings-item-label" }, t(text)),
+    meta ? (0, import_react47.createElement)("span", { className: "bt-settings-badge", "data-tone": meta.badgeTone }, t(meta.badge)) : null
+  );
+  const groupNodes = ([title, group]) => title === STAGED_TITLE ? [
+    (0, import_react47.createElement)(
+      "div",
+      { key: title, className: "bt-settings-staged-box" },
+      (0, import_react47.createElement)("div", { className: "bt-settings-group-title" }, t(title)),
+      ...group.map(navItem)
+    )
+  ] : [
+    (0, import_react47.createElement)("div", { key: title, className: "bt-settings-group-title" }, t(title)),
+    ...group.map(navItem)
+  ];
+  const mainGroups = groups.filter(([title]) => title !== "System");
+  const systemGroup = groups.find(([title]) => title === "System");
   return (0, import_react47.createElement)(
     "div",
     { className: "bt-settings-layer", "data-leaving": leaving || void 0 },
@@ -22055,8 +22131,8 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false,
         "nav",
         { ref: nav.box, className: "bt-settings-nav", "aria-label": t("Settings pages") },
         (0, import_react47.createElement)("span", { ref: nav.thumb, className: "bt-thumb", "aria-hidden": true }),
-        pages.filter(([key]) => !LAST_PAGES.has(key)).map(([key, text]) => pageButton(key, text)),
-        extra.length > 0 ? (0, import_react47.createElement)("span", { className: "bt-settings-rule", "aria-hidden": true }) : null,
+        mainGroups.flatMap(groupNodes),
+        extra.length > 0 ? (0, import_react47.createElement)("span", { key: "dsh-rule", className: "bt-settings-rule", "aria-hidden": true }) : null,
         extra.map((row) => (0, import_react47.createElement)("button", {
           key: `dsh:${row.id}`,
           type: "button",
@@ -22067,8 +22143,8 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false,
           only: row.id,
           fallback: (0, import_react47.createElement)(DSH_ICONS[row.id] ?? import_dsh_client_ui_primitives2.IconSettingsOutlineMedium, { size: 16 })
         })), row.label)),
-        (0, import_react47.createElement)("span", { className: "bt-settings-rule", "aria-hidden": true }),
-        pages.filter(([key]) => LAST_PAGES.has(key)).map(([key, text]) => pageButton(key, text))
+        (0, import_react47.createElement)("span", { key: "system-rule", className: "bt-settings-rule", "aria-hidden": true }),
+        systemGroup ? groupNodes(systemGroup) : null
       ),
       (0, import_react47.createElement)(
         "div",
@@ -22083,6 +22159,7 @@ function SettingsDialog({ page, id, roster, actions, useUpdate, leaving = false,
         shown === "usage" ? null : (0, import_react47.createElement)(
           "div",
           { key: pageKey, className: "bt-settings-scroll bt-settings-page", "data-move": last.current.move },
+          stagedShown ? (0, import_react47.createElement)("div", { className: "bt-staged-banner", role: "note" }, t("Staged capability: this is an isolated, experimental capability, kept apart from the production workspace and daily Bot chats.")) : null,
           errorLine,
           (0, import_react47.createElement)(
             PageBoundary,
@@ -25600,6 +25677,20 @@ body[data-ds-dark-theme] .bt-member-state.bt-mw-ask{color:#f0b84a}
 @media (prefers-reduced-motion:reduce){.bt-mw-pill,.bt-mw-face,.bt-mw-label,.bt-member,.bt-mw-card{animation:none}.bt-mw-pill{transition:background-color .12s ease}}
 `;
 
+// src/client/details-tabs.js
+var detailsTabs = createSource([]);
+function registerDetailsTab(entry) {
+  const { id, label, component, order = 0 } = entry;
+  if (typeof id !== "string" || !id || id === "details" || id === "browser") throw new Error("A details tab needs a unique plugin id");
+  if (typeof label !== "string" && typeof label !== "function") throw new Error("A details tab needs a label");
+  if (typeof component !== "function") throw new Error("A details tab needs a React component");
+  if (!Number.isFinite(order)) throw new Error("A details tab order must be finite");
+  if (detailsTabs.getSnapshot().some((tab2) => tab2.id === id)) throw new Error(`Details tab "${id}" is already registered`);
+  const tab = { id, label, component, order };
+  detailsTabs.set((tabs) => [...tabs, tab].sort((left, right) => left.order - right.order));
+  return () => detailsTabs.set((tabs) => tabs.includes(tab) ? tabs.filter((value) => value !== tab) : tabs);
+}
+
 // src/client/details-drawer.js
 var import_react59 = require("react");
 function transcriptOf(list, id, name, hiddenTurns = []) {
@@ -25887,8 +25978,11 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
   const owner = roster.byId[sessionId];
   const part = owner ? currentPart(owner) : sessionId;
   const isMainBot = isMainOf(roster, owner?.id);
-  const [tab, setTab] = (0, import_react59.useState)("details");
+  const pluginTabs = (0, import_react59.useSyncExternalStore)(detailsTabs.subscribe, detailsTabs.getSnapshot, detailsTabs.getSnapshot);
+  const [selectedTab, setTab] = (0, import_react59.useState)("details");
   const room2 = roster.roomsById[sessionId];
+  const tab = selectedTab === "details" || selectedTab === "browser" && owner || pluginTabs.some((entry) => entry.id === selectedTab) ? selectedTab : "details";
+  const pluginTab = pluginTabs.find((entry) => entry.id === tab);
   const [view, setView] = (0, import_react59.useState)(startTab === "settings" && (owner || room2) ? "settings" : "overview");
   const [editing, setEditing] = (0, import_react59.useState)(Boolean(startRenaming && (roster.byId[sessionId] || roster.roomsById[sessionId])));
   const [draftName, setDraftName] = (0, import_react59.useState)(roster.byId[sessionId]?.name ?? (roster.roomsById[sessionId]?.named ? roster.roomsById[sessionId].name : ""));
@@ -25968,7 +26062,7 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
     if (room2) await run2(actions.updateRoom(room2.id, { name: next }));
   };
   const subtitle = bot ? bot.role : roomSubtitle(room2, roster);
-  const tabs = bot ? roster.computer?.enabled === true ? ["details", "browser", "computer"] : ["details", "browser"] : ["details"];
+  const tabs = [...bot ? roster.computer?.enabled === true ? ["details", "browser", "computer"] : ["details", "browser"] : ["details"], ...pluginTabs.map((entry) => entry.id)];
   return [
     (0, import_react59.createElement)(import_react59.Fragment, { key: "top" }, top),
     (0, import_react59.createElement)(
@@ -26000,7 +26094,11 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
       "div",
       { key: "tabs", ref: glide.box, className: "bt-tabs", role: "tablist", "data-move": side },
       (0, import_react59.createElement)("span", { ref: glide.thumb, className: "bt-thumb", "aria-hidden": true }),
-      tabs.map((key) => (0, import_react59.createElement)("button", { key, type: "button", role: "tab", className: "bt-tab", "aria-selected": tab === key, onClick: () => setTab(key) }, t(TAB_LABELS[key])))
+      tabs.map((key) => {
+        const entry = pluginTabs.find((value) => value.id === key);
+        const label = entry ? typeof entry.label === "function" ? (0, import_react59.createElement)(entry.label) : entry.label : t(TAB_LABELS[key]);
+        return (0, import_react59.createElement)("button", { key, type: "button", role: "tab", className: "bt-tab", "aria-selected": tab === key, onClick: () => setTab(key) }, label);
+      })
     ) : null,
     (0, import_react59.createElement)(
       "div",
@@ -26036,7 +26134,8 @@ function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, roster, a
         ) : null,
         (0, import_react59.createElement)(ScheduleSummary, { key: "routines", bot, actions })
       ] : null,
-      bot && tab === "browser" ? (0, import_react59.createElement)(BrowserCards, { bot, sessionId, roster, actions, useBrowserTabs, useBrowserPages }) : null
+      bot && tab === "browser" ? (0, import_react59.createElement)(BrowserCards, { bot, sessionId, roster, actions, useBrowserTabs, useBrowserPages }) : null,
+      pluginTab ? (0, import_react59.createElement)(pluginTab.component, { sessionId: part, subjectId: sessionId, bot, room: room2 }) : null
     )
   ];
 }
@@ -29099,7 +29198,7 @@ function apply(ctx) {
     };
   };
   ctx.effect(() => {
-    const hub = { registerShape, registerTheme, themes: () => Object.keys(allThemes()), shapes: () => Object.keys(SHAPES) };
+    const hub = { registerShape, registerTheme, registerDetailsTab, themes: () => Object.keys(allThemes()), shapes: () => Object.keys(SHAPES) };
     const queued = Array.isArray(window.dshBotQueue) ? window.dshBotQueue : [];
     window.dshBot = hub;
     window.dshBotQueue = { push: (task) => {

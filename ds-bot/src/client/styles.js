@@ -553,6 +553,22 @@ body[data-ds-dark-theme] .bt-scrim{background:rgba(0,0,0,.5)}
 .bt-advanced:hover{background:var(--bt-hover)}
 .bt-advanced>svg{flex:none;color:var(--bt-ink-3)}
 .bt-settings-item>svg{flex:none}
+/* Section titles sit between the page groups; a page's badge marks it as
+   Bot-scoped, staged, or sandboxed so it reads apart from daily-use pages. */
+.bt-settings-group-title{padding:12px 8px 2px;font-size:11px;line-height:14px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--bt-ink-3);flex:none;pointer-events:none;user-select:none}
+.bt-settings-group-title:first-child{padding-top:2px}
+.bt-settings-item-label{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-settings-badge{display:inline-flex;flex:none;align-items:center;border-radius:999px;border:.5px solid transparent;padding:1px 6px;font-size:10px;line-height:14px;font-weight:500;background:var(--bt-hover);color:var(--bt-ink-3)}
+.bt-settings-badge[data-tone=subtle]{background:var(--bt-hover);color:var(--bt-ink-3)}
+.bt-settings-badge[data-tone=staged],.bt-settings-badge[data-tone=warn]{background:color-mix(in srgb,var(--bt-star) 16%,transparent);color:var(--bt-star);border-color:color-mix(in srgb,var(--bt-star) 30%,transparent)}
+.bt-settings-badge[data-tone=bot]{background:color-mix(in srgb,var(--bt-accent) 14%,transparent);color:var(--bt-accent);border-color:color-mix(in srgb,var(--bt-accent) 25%,transparent)}
+/* Reserve capabilities sit in their own dashed amber box in the nav, and the page
+   announces itself with the same tinting. */
+.bt-settings-staged-box{margin:10px 4px 6px;padding:8px 6px;border-radius:10px;border:1px dashed color-mix(in srgb,var(--bt-star) 45%,transparent);background:color-mix(in srgb,var(--bt-star) 5%,transparent);flex:none}
+.bt-settings-staged-box .bt-settings-item{opacity:.85;border:.5px solid transparent}
+.bt-settings-staged-box .bt-settings-item:hover{opacity:1;background:color-mix(in srgb,var(--bt-star) 10%,transparent);color:var(--bt-ink)}
+.bt-settings-staged-box .bt-settings-item[aria-current=page]{opacity:1;background:color-mix(in srgb,var(--bt-star) 18%,transparent);border-color:var(--bt-star);color:var(--bt-ink)}
+.bt-staged-banner{padding:10px 14px;margin-bottom:16px;border-radius:10px;border:1px solid color-mix(in srgb,var(--bt-star) 35%,transparent);background:color-mix(in srgb,var(--bt-star) 10%,transparent);color:var(--bt-ink);font-size:12px;line-height:18px}
 /* Usage while another page is open: out of the flow, so it keeps its layout, and not
    rendered. */
 .bt-settings-usage[data-off]{position:absolute;top:0;left:198px;width:calc(var(--bt-set-w) - 198px);height:100%;box-sizing:border-box;content-visibility:hidden;pointer-events:none}
@@ -998,6 +1014,8 @@ body[data-ds-dark-theme] .bt-theme-chip i{background:var(--da)}
      right border keeps the last tab clear of the close button. */
   .bt-settings-nav{width:100%;flex:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px;border:0;border-right:52px solid transparent;border-bottom:.5px solid var(--bt-line);scrollbar-width:thin;box-sizing:border-box}
   .bt-settings-item{flex:none}
+  .bt-settings-group-title{display:none}
+  .bt-settings-staged-box{display:flex;align-items:center;margin:0 2px;padding:4px 6px}
   .bt-settings-rule{width:.5px;height:16px;margin:0 4px}
   .bt-settings-main{width:100%;flex:1;min-height:0;height:auto}
   .bt-settings-usage[data-off]{left:0;width:100%}

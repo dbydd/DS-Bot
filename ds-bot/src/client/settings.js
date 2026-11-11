@@ -30,13 +30,40 @@ import { t } from './i18n.js'
 
 const capitalize = word => word[0].toUpperCase() + word.slice(1)
 
-// Settings dialog: a 198px page list beside the page. Bots and group chats each list
-// their members, and one opens on its own settings form. Usage widens the dialog.
-// DS Bot's pages come first; below a rule, the pages DSH and other plugins register
-// (`settings.section`), then Feedback and About. DSH's General rows join General, and
-// its Models page opens from DS Bot's Models page as the advanced settings.
-const SETTINGS_PAGES = [['general', 'General'], ['models', 'Models'], ['local-agents', 'Local agents'], ['bots', 'Bots'], ['groups', 'Group chats'], ['connectors', 'Connectors'], ['im', 'IM'], ['capabilities', 'Capabilities'], ['browser', 'Browser'], ['computer', 'Computer use'], ['schedules', 'Scheduled tasks'], ['usage', 'Usage'], ['secrets', 'Secrets'], ['feedback', 'Feedback'], ['about', 'About DS Bot']]
-const LAST_PAGES = new Set(['feedback', 'about'])
+// Settings dialog: a 198px page list beside the page, grouped under small titles.
+// Bots and group chats each list their members, and one opens on its own settings
+// form. Usage widens the dialog. A page can carry a badge (`badge`, with a
+// `badgeTone`) so a staged or Bot-scoped page reads differently from the ones in
+// daily use. DS Bot's groups come first; below a rule, the pages DSH and other
+// plugins register (`settings.section`), then System (Feedback and About). DSH's
+// General rows join General, and its Models page opens from DS Bot's Models page
+// as the advanced settings. Staged pages sit in a dashed box and announce
+// themselves on the page.
+const SETTINGS_GROUPS = [
+  ['Core & Team', [
+    ['general', 'General'], ['models', 'Models'], ['secrets', 'Secrets'], ['usage', 'Usage'],
+  ]],
+  ['Bots & Groups', [
+    ['bots', 'Bots'], ['groups', 'Group chats'], ['im', 'IM'],
+  ]],
+  ['Bot Scoped', [
+    ['capabilities', 'Capabilities', { badge: 'Bot', badgeTone: 'bot' }],
+    ['schedules', 'Scheduled tasks', { badge: 'Bot', badgeTone: 'bot' }],
+  ]],
+  ['Staged & Experimental', [
+    ['local-agents', 'Local agents', { badge: 'Staged', badgeTone: 'staged' }],
+    ['computer', 'Computer use', { badge: 'Host CUA', badgeTone: 'warn' }],
+    ['connectors', 'Connectors', { badge: 'Paths', badgeTone: 'subtle' }],
+    ['browser', 'Browser', { badge: 'Sandbox', badgeTone: 'subtle' }],
+  ]],
+  ['System', [
+    ['feedback', 'Feedback'], ['about', 'About DS Bot'],
+  ]],
+]
+// Staged pages live in their own dashed box in the nav and announce themselves on
+// the page, so reserve capabilities never read as daily-use settings.
+const STAGED_TITLE = 'Staged & Experimental'
+const STAGED_PAGES = ['local-agents', 'computer', 'connectors', 'browser']
 // DSH sections DS Bot's own pages already hold.
 const MERGED_SECTIONS = new Set(['general', 'models'])
 // DSH General rows that sit under Appearance; the rest go under More.
@@ -308,15 +335,20 @@ export function SettingsDialog({ page, id, roster, actions, useUpdate, leaving =
   // A Bot or group deleted while its form is open leaves its page on the list.
   const bot = page === 'bots' && id ? roster.byId[id] : undefined
   const room = page === 'groups' && id ? roster.roomsById[id] : undefined
-  const pages = SETTINGS_PAGES.filter(([key]) => key !== 'models' || actions.providers !== undefined)
+  // A group drops out when filtering leaves it empty, so the models gate never
+  // strands a title above nothing.
+  const groups = SETTINGS_GROUPS
+    .map(([title, group]) => [title, group.filter(([key]) => key !== 'models' || actions.providers !== undefined)])
+    .filter(([, group]) => group.length > 0)
+  const known = groups.flatMap(([, group]) => group)
   const extra = dshPages(dsh)
   // A DSH page is `dsh` with its section id; one no longer registered falls back to General.
   const section = page === 'dsh' ? extra.find(row => row.id === id) : undefined
   // DSH's Models page, one level into Models.
   const advanced = page === 'models' && id === 'advanced' && hasSection(dsh, 'models')
-  const shown = section ? 'dsh' : pages.some(([key]) => key === page) ? page : 'general'
+  const shown = section ? 'dsh' : known.some(([key]) => key === page) ? page : 'general'
   const usageFocus = shown === 'usage' && id ? id : null
-  const label = section ? section.label : advanced ? t('Advanced settings') : t(pages.find(([key]) => key === shown)[1])
+  const label = section ? section.label : advanced ? t('Advanced settings') : t(known.find(([key]) => key === shown)[1])
   const back = bot ? t('Back to Bots') : room ? t('Back to group chats') : usageFocus ? t('All usage') : advanced ? t('Back to models') : null
   const nav = useGlide(section ? `dsh:${section.id}` : shown, { axis: 'y' })
   // A page enters from the right when it is one level in, from the left when it comes
@@ -334,30 +366,43 @@ export function SettingsDialog({ page, id, roster, actions, useUpdate, leaving =
   const [usageOpened, setUsageOpened] = useState(shown === 'usage')
   if (shown === 'usage' && !usageOpened) setUsageOpened(true)
   const errorLine = error ? h('div', { className: 'bt-error', role: 'alert', style: { padding: 0 } }, error) : null
-  const pageButton = (key, text) => h('button', {
+  const stagedShown = STAGED_PAGES.includes(shown)
+  const navItem = ([key, text, meta]) => h('button', {
     key, type: 'button', className: 'bt-settings-item', 'aria-current': shown === key ? 'page' : undefined, onClick: () => actions.openSettings(key),
-  }, h(PAGE_ICONS[key]), t(text))
+  }, h(PAGE_ICONS[key]), h('span', { className: 'bt-settings-item-label' }, t(text)),
+    meta ? h('span', { className: 'bt-settings-badge', 'data-tone': meta.badgeTone }, t(meta.badge)) : null)
+  const groupNodes = ([title, group]) => title === STAGED_TITLE ? [
+    h('div', { key: title, className: 'bt-settings-staged-box' },
+      h('div', { className: 'bt-settings-group-title' }, t(title)),
+      ...group.map(navItem)),
+  ] : [
+    h('div', { key: title, className: 'bt-settings-group-title' }, t(title)),
+    ...group.map(navItem),
+  ]
+  const mainGroups = groups.filter(([title]) => title !== 'System')
+  const systemGroup = groups.find(([title]) => title === 'System')
   return h('div', { className: 'bt-settings-layer', 'data-leaving': leaving || undefined },
     h('div', { className: 'bt-scrim', onMouseDown: close }),
     h('div', { className: 'bt-settings', role: 'dialog', 'aria-modal': true, 'aria-label': t('Settings'), 'data-shortcut-modal': 'settings' },
       h('nav', { ref: nav.box, className: 'bt-settings-nav', 'aria-label': t('Settings pages') },
         h('span', { ref: nav.thumb, className: 'bt-thumb', 'aria-hidden': true }),
-        pages.filter(([key]) => !LAST_PAGES.has(key)).map(([key, text]) => pageButton(key, text)),
-        extra.length > 0 ? h('span', { className: 'bt-settings-rule', 'aria-hidden': true }) : null,
+        mainGroups.flatMap(groupNodes),
+        extra.length > 0 ? h('span', { key: 'dsh-rule', className: 'bt-settings-rule', 'aria-hidden': true }) : null,
         extra.map(row => h('button', {
           key: `dsh:${row.id}`, type: 'button', className: 'bt-settings-item', 'aria-current': section?.id === row.id ? 'page' : undefined,
           onClick: () => actions.openSettings('dsh', row.id),
         }, h('span', { className: 'bt-settings-icon', 'aria-hidden': true }, dsh.renderSlot('settings.section.icon', { size: 16, active: section?.id === row.id }, {
           only: row.id, fallback: h(DSH_ICONS[row.id] ?? IconSettingsOutlineMedium, { size: 16 }),
         })), row.label)),
-        h('span', { className: 'bt-settings-rule', 'aria-hidden': true }),
-        pages.filter(([key]) => LAST_PAGES.has(key)).map(([key, text]) => pageButton(key, text))),
+        h('span', { key: 'system-rule', className: 'bt-settings-rule', 'aria-hidden': true }),
+        systemGroup ? groupNodes(systemGroup) : null),
       h('div', { className: 'bt-settings-main' },
         h('div', { className: 'bt-settings-head' },
           back ? h('button', { type: 'button', className: 'bt-icon-btn', 'aria-label': back, title: back, onClick: () => actions.openSettings(shown) }, h(ChevronLeftIcon)) : null,
           h('h2', { key: bot?.id ?? room?.id ?? section?.id ?? (advanced ? 'advanced' : shown) }, bot?.name ?? room?.name ?? label),
           dsh ? h('div', { className: 'bt-settings-actions' }, dsh.renderSlot('settings.action', {})) : null),
         shown === 'usage' ? null : h('div', { key: pageKey, className: 'bt-settings-scroll bt-settings-page', 'data-move': last.current.move },
+          stagedShown ? h('div', { className: 'bt-staged-banner', role: 'note' }, t('Staged capability: this is an isolated, experimental capability, kept apart from the production workspace and daily Bot chats.')) : null,
           errorLine,
           h(PageBoundary, null,
           shown === 'computer' ? h(ComputerPage, { roster, actions, run, Section: SetSection, Row: SetRow, Switch }) : null,

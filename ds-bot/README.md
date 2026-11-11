@@ -161,6 +161,14 @@ In dsh Desktop and the desktop app, each Bot has its own browser panel in the ri
 
 dsh Web has no browser panel and no `read_browser` tool.
 
+## Details panel extensions
+
+Browser plugins can add a tab to the existing Bot and group details panel through `window.dshBot.registerDetailsTab({ id, label, component, order })`. `id` is unique and excludes the built-in `details` and `browser` ids. `label` is a string or a function returning the current localized label. `component` is a React function component. `order` defaults to zero and orders plugin tabs after the built-in tabs.
+
+The component receives `{ sessionId, subjectId, bot, room }`. `sessionId` identifies the Bot's current conversation part or the group's displayed Session. `subjectId` identifies the panel's selected Bot or group. The panel keeps its existing resize, close, and conversation-following behavior.
+
+Registration returns an idempotent disposer. Call it when the contributing plugin unloads. Removing the selected plugin tab immediately shows Details. Plugins that load before DS Bot can enqueue their registration callback with `(window.dshBotQueue ??= []).push(hub => { /* register and retain the disposer here */ })`. Cancel a pending callback when its plugin unloads.
+
 ## Secrets
 
 When a Bot needs an API key, token or password, it calls `request_secret`, and a secret card shows in its own chat. The Bot never sees the value.

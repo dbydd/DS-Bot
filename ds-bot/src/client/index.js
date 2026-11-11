@@ -56,6 +56,7 @@ import { USER_MESSAGE_CSS, UserMessageCell, canDrawUserMessages } from './user-m
 import { QueueDock, QUEUE_CSS } from './queue-dock.js'
 import { noticeApprovals } from './approval-notices.js'
 import { listedOpener } from './open-listed.js'
+import { registerDetailsTab } from './details-tabs.js'
 
 export const inject = ['sessions', 'uiWorkspace', 'uiConversation', 'slots', 'theme', 'layout']
 
@@ -410,7 +411,7 @@ export function apply(ctx) {
   }
 
   ctx.effect(() => {
-    const hub = { registerShape, registerTheme, themes: () => Object.keys(allThemes()), shapes: () => Object.keys(SHAPES) }
+    const hub = { registerShape, registerTheme, registerDetailsTab, themes: () => Object.keys(allThemes()), shapes: () => Object.keys(SHAPES) }
     const queued = Array.isArray(window.dshBotQueue) ? window.dshBotQueue : []
     window.dshBot = hub
     window.dshBotQueue = { push: (task) => { try { task(hub) } catch (error) { console.warn('[ds-bot] registration', error); noteClientError('registration', error) } } }

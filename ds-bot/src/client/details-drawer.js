@@ -1,4 +1,4 @@
-import { createElement as h, Fragment, useEffect, useRef, useState } from 'react'
+import { createElement as h, Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { isMainOf } from './sources.js'
 import { HEADER, currentPart, runStatsOf, stripHeader, usageOf } from './text.js'
 import { PlusIcon, ShareIcon, CloseIcon, ChevronLeftIcon, GearIcon } from './icons.js'
@@ -20,6 +20,7 @@ import { PermissionPicker, presetDanger, presetName } from './permission-picker.
 import { BotConnectors } from './connectors.js'
 import { ComputerView } from './computer.js'
 import { t } from './i18n.js'
+import { detailsTabs } from './details-tabs.js'
 
 function transcriptOf(list, id, name, hiddenTurns = []) {
   const outline = list.projectionsBySession?.[id]?.values?.turnOutline ?? list.byId[id]?.projectionValues?.turnOutline
@@ -226,8 +227,11 @@ export function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, ro
   const owner = roster.byId[sessionId]
   const part = owner ? currentPart(owner) : sessionId
   const isMainBot = isMainOf(roster, owner?.id)
-  const [tab, setTab] = useState('details')
+  const pluginTabs = useSyncExternalStore(detailsTabs.subscribe, detailsTabs.getSnapshot, detailsTabs.getSnapshot)
+  const [selectedTab, setTab] = useState('details')
   const room = roster.roomsById[sessionId]
+  const tab = selectedTab === 'details' || (selectedTab === 'browser' && owner) || pluginTabs.some(entry => entry.id === selectedTab) ? selectedTab : 'details'
+  const pluginTab = pluginTabs.find(entry => entry.id === tab)
   // The info pane swaps its overview for the Bot or group settings view in place.
   const [view, setView] = useState(startTab === 'settings' && (owner || room) ? 'settings' : 'overview')
   const [editing, setEditing] = useState(Boolean(startRenaming && (roster.byId[sessionId] || roster.roomsById[sessionId])))
@@ -298,7 +302,7 @@ export function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, ro
   }
   const subtitle = bot ? bot.role : roomSubtitle(room, roster)
   // Tab sets: a 1:1 Bot has Details and Browser; a group has only Details, so no tab row.
-  const tabs = bot ? (roster.computer?.enabled === true ? ['details', 'browser', 'computer'] : ['details', 'browser']) : ['details']
+  const tabs = [...(bot ? (roster.computer?.enabled === true ? ['details', 'browser', 'computer'] : ['details', 'browser']) : ['details']), ...pluginTabs.map(entry => entry.id)]
   return [h(Fragment, { key: 'top' }, top),
     h('div', { key: 'id', className: 'bt-drawer-id', 'data-move': side },
       bot ? h(BotAvatar, { bot, size: 64, state: botState(running, doing, roster.questions?.[part] !== undefined), main: isMainBot, badge: false, gaze: true, pokeable: true })
@@ -314,7 +318,11 @@ export function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, ro
       subtitle ? h('span', { className: 'bt-drawer-role' }, subtitle) : null),
     tabs.length > 1 ? h('div', { key: 'tabs', ref: glide.box, className: 'bt-tabs', role: 'tablist', 'data-move': side },
       h('span', { ref: glide.thumb, className: 'bt-thumb', 'aria-hidden': true }),
-      tabs.map(key => h('button', { key, type: 'button', role: 'tab', className: 'bt-tab', 'aria-selected': tab === key, onClick: () => setTab(key) }, t(TAB_LABELS[key])))) : null,
+      tabs.map(key => {
+        const entry = pluginTabs.find(value => value.id === key)
+        const label = entry ? (typeof entry.label === 'function' ? h(entry.label) : entry.label) : t(TAB_LABELS[key])
+        return h('button', { key, type: 'button', role: 'tab', className: 'bt-tab', 'aria-selected': tab === key, onClick: () => setTab(key) }, label)
+      })) : null,
     h('div', { key: `body:${tab}`, className: 'bt-drawer-body', 'data-move': move },
       errorLine,
       room && tab === 'details' ? h(GroupOverview, { room, roster, actions, usage, useWork, openSettings: () => setView('settings') }) : null,
@@ -340,5 +348,6 @@ export function DetailsDrawer({ sessionId, startRenaming, startTab, hasStrip, ro
           h('div', { className: 'bt-kv' }, h('span', null, bot.name), h('span', null, usage))) : null,
         h(ScheduleSummary, { key: 'routines', bot, actions }),
       ] : null,
-      bot && tab === 'browser' ? h(BrowserCards, { bot, sessionId, roster, actions, useBrowserTabs, useBrowserPages }) : null)]
+      bot && tab === 'browser' ? h(BrowserCards, { bot, sessionId, roster, actions, useBrowserTabs, useBrowserPages }) : null,
+      pluginTab ? h(pluginTab.component, { sessionId: part, subjectId: sessionId, bot, room }) : null)]
 }
